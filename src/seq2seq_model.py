@@ -10,28 +10,23 @@ class EncoderRNN(nn.Module):
         self.hidden_size = hidden_size
         self.gru = nn.GRU(input_size=input_size, hidden_size=hidden_size)
 
-    def forward(self, input, hidden):
-        output, hidden = self.gru(input, hidden)
+    def forward(self, input):
+        output, hidden = self.gru(input)
         return output, hidden
 
-    def initHidden(self, device):
-        return torch.zeros(1, 1, self.hidden_size, device=device)
 
 class DecoderRNN(nn.Module):
-    def __init__(self, hidden_size, output_size):
+    def __init__(self, input_size, hidden_size):
         super(DecoderRNN, self).__init__()
         self.hidden_size = hidden_size
-        self.gru = nn.GRU(hidden_size, hidden_size)
-        self.out = nn.Linear(hidden_size, output_size)
-        self.softmax = nn.LogSoftmax(dim=1)
+        self.gru = nn.GRU(input_size, hidden_size)
+        self.sigmoid = nn.Sigmoid()
+        self.linear = nn.Linear(hidden_size, input_size)
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, input, hidden):
-        output = input.view(1, 1, -1)
-        output = F.relu(output)
-        output, hidden = self.gru(output, hidden)
-        output = self.softmax(self.out(output[0]))
+        output, hidden = self.gru(input, hidden)
+        output = self.linear(output)
+        output = self.sigmoid(output)
         return output, hidden
-
-    def initHidden(self, device):
-        return torch.zeros(1, 1, self.hidden_size, device=device)
 

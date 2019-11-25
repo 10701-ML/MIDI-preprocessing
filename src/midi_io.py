@@ -85,11 +85,12 @@ def midiToPianoroll(filepath, debug=False):
 
                 if note_idx in note_states:
                     last_time_slice_index = note_states[note_idx] # last time when press the `note_idx` button on the piano.
-                    piano_roll[note_idx][last_time_slice_index:time_slice_idx] = 1
+                    piano_roll[note_idx][last_time_slice_index: time_slice_idx] = 1
                     del note_states[note_idx]
                 else:
                     # passible an error
                     pass
+
 
     return piano_roll.T
 
@@ -104,8 +105,7 @@ def get_data(data_dir):
     return pianoroll_data
 
 """
-return x shape = (x_seq_length, -1, ndim)
-       y shape = (y_seq_length, -1, ndim)
+return a list containing a song representation with shape = (seq_length, -1, ndim)
 """
 def createSeqNetInputs(pianoroll_data, x_seq_length, y_seq_length):
     x = []
@@ -113,21 +113,22 @@ def createSeqNetInputs(pianoroll_data, x_seq_length, y_seq_length):
 
     for i, piano_roll in enumerate(pianoroll_data):
         pos = 0
+        x_tmp = []
+        y_tmp = []
         while pos + x_seq_length + y_seq_length < piano_roll.shape[0]:
-            x.append(piano_roll[pos:pos + x_seq_length])
-            y.append(piano_roll[pos + x_seq_length: pos + x_seq_length + y_seq_length])
+            x_tmp.append(piano_roll[pos:pos + x_seq_length])
+            y_tmp.append(piano_roll[pos + x_seq_length: pos + x_seq_length + y_seq_length])
             pos += x_seq_length
 
+        x_tmp = np.stack(x_tmp, axis=1)
+        y_tmp = np.stack(y_tmp, axis=1)
+        x.append(x_tmp)
+        y.append(y_tmp)
+
     print(len(x))
-    X = np.stack(x, axis=1)
-    Y = np.stack(y, axis=1)
-
-    print("x shape", X.shape)
-    print("y shape", Y.shape)
-
-    x_1, y_1 = shuffle(X, Y)
-
-    return x_1, y_1
+    print("x shape", x[0].shape)
+    print("y shape", y[0].shape)
+    return x, y
 
 
 # create Network inputs
