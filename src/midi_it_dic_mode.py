@@ -5,9 +5,18 @@ from parameters import CONFIG
 import numpy as np
 from collections import defaultdict
 import json
-def converter(filepath,
-              merge=True, # return (n_time_stamp, 128) or return (n_time_stamp, 128, num_track)
-              velocity=False, # wether of not return the velocity in the value.(other wise return binary (0/1))
+
+"""
+Use a new package (pypianoroll to process data)
+
+Input one file path, output a pianoroll representation of the music.
+If merge == True, then return (n_time_stamp, 128) other wish return (n_time_stamp, 128, num_track)
+If velocity == True then return the velocity in the value divided by the maximum velocity value. (127)
+(other wise return binary (0/1))
+"""
+def midiToPianoroll(filepath,
+              merge=True,
+              velocity=False,
               ):
     """Convert a MIDI file to a multi-track piano-roll and save the
     resulting multi-track piano-roll to the destination directory. Return a
@@ -27,7 +36,34 @@ def converter(filepath,
     return result
 
 """
-Get all the chord for the training set.
+pianoroll_data: List. One element corresponding to one piece of music
+Do not support multi-track.
+"""
+def createSeqNetInputs(pianoroll_data, x_seq_length, y_seq_length):
+    x = []
+    y = []
+
+    for i, piano_roll in enumerate(pianoroll_data):
+        pos = 0
+        x_tmp = []
+        y_tmp = []
+        while pos + x_seq_length + y_seq_length < piano_roll.shape[0]:
+            x_tmp.append(piano_roll[pos:pos + x_seq_length])
+            y_tmp.append(piano_roll[pos + x_seq_length: pos + x_seq_length + y_seq_length])
+            pos += x_seq_length
+
+        x_tmp = np.stack(x_tmp, axis=1)
+        y_tmp = np.stack(y_tmp, axis=1)
+        x.append(x_tmp)
+        y.append(y_tmp)
+
+    print(len(x))
+    print("x shape", x[0].shape)
+    print("y shape", y[0].shape)
+    return x, y
+
+"""
+Get all the chords for the training set.
 """
 def get_dictionary_of_chord(root_path,
                             two_hand=True # True if the chord is chord is played by two hand.
@@ -39,7 +75,7 @@ def get_dictionary_of_chord(root_path,
         chord_set = set()
         chord_list = list()
         chord = np.unique(result, axis=0)
-        index = np.argwhere(chord)
+        index = np.argwhere(chord==1)
         _chord_tmp_dict = defaultdict(list)
         for row in index:
             _chord_tmp_dict[row[0]].append(row[1])
@@ -56,7 +92,7 @@ def get_dictionary_of_chord(root_path,
         dic = dict()
         count = 0
         for midi_path in findall_endswith('.mid', root_path):
-            result = converter(midi_path,merge=True, velocity=False)
+            result = midiToPianoroll(midi_path,merge=True, velocity=False)
             lis = func(result)
             for i in lis:
                 if i not in dic.keys():
@@ -92,6 +128,12 @@ def get_dictionary_of_chord(root_path,
         with open(os.path.join(dir, "right-hand.json"), "w") as f:
             f.write(json.dumps(dic_right))
 
+
+"""
+Get NN input for the dictionary version.
+pianoroll_data: List. One element corresponding to one piece of music
+Do not support multi-track.
+"""
 def get_nn_input(pianoroll_data, x_seq_length, y_seq_length, dictionary_dict):
     x = []
     y = []
@@ -99,40 +141,47 @@ def get_nn_input(pianoroll_data, x_seq_length, y_seq_length, dictionary_dict):
         pos = 0
         x_tmp = []
         y_tmp = []
-        x_list = [[] * piano_roll.shape[0]]
-        index = np.argwhere(piano_roll)
+        x_dict = defaultdict(list)
+        index = np.argwhere(piano_roll==1)
         for row in index:
-            x_list[row[0]].append(row[1])
-        id_ = [dictionary_dict[str(v)] for v in x_list]
+            x_dict[row[0]].append(row[1])
+        id_ = [dictionary_dict[str(v)] for v in x_dict.values()]
 
-        while pos + x_seq_length + y_seq_length < piano_roll.shape[0]:
+        while pos + x_seq_length + y_seq_length < len(id_):
             x_tmp.append(id_[pos:pos + x_seq_length])
             y_tmp.append(id_[pos + x_seq_length: pos + x_seq_length + y_seq_length])
             pos += x_seq_length
 
-        x_tmp = np.stack(x_tmp, axis=1)
-        y_tmp = np.stack(y_tmp, axis=1)
         x.append(x_tmp)
         y.append(y_tmp)
 
     print(len(x))
-    print("x shape", x[0].shape)
-    print("y shape", y[0].shape)
+    print(f"number of music: {len(x)}, number of samples = {len(x[0])}, dimension = {len(x[0][0])}")
+    print("one sample of x", x[0][300])
+    print("one sample of y", y[0][300])
+    print(f"This input needs embedding or {len(dictionary)} dims")
+
     return x, y
 
 if __name__ == "__main__":
     root_path = "../data/"
     ## test parser
-    for midi_path in findall_endswith('.mid', root_path):
-        result = converter(midi_path, merge=False, velocity=True)
-    ## test get_dictionary_of_chord
-    # get_dictionary_of_chord(root_path, two_hand=False)
-
-    # test nn_input_generator
-    with open("../data/output/chord_dictionary/two-hand.json", "r") as f:
+    # for midi_path in findall_endswith('.mid', root_path):
+    #     result = midiToPianoroll(midi_path, merge=False, velocity=True)
+    #
+    # ## test get_dictionary_of_chord
+    # # get_dictionary_of_chord(root_path, two_hand=False)
+    midi_path = next(findall_endswith('.mid', root_path))
+    pianoroll_data = midiToPianoroll(midi_path, merge=True, velocity=False)
+    #
+    # ## test createSeqNetInputs
+    # createSeqNetInputs([pianoroll_data], 5, 5)
+    # ## test nn_input_generator
+    with open("../output/chord_dictionary/two-hand.json", "r") as f:
         dictionary = json.load(f)
+    #
+    x, y  =get_nn_input([pianoroll_data], 5, 5, dictionary)
 
-    get_nn_input
 
 
 
