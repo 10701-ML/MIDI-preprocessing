@@ -1,10 +1,12 @@
 from seq2seq_model import DecoderRNN, EncoderRNN
 from midi_io import createSeqNetInputs, midiToPianoroll
+from parameters import *
 import torch
 from torch import optim
 from torch import nn
 import time
 import math
+import argparse
 
 device = torch.device("cpu")
 
@@ -27,6 +29,7 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer,
     decoder_optimizer.zero_grad()
 
     target_length = target_tensor.size(0)
+    print(input_tensor.shape)
     encoder_output, encoder_hidden = encoder(input_tensor)
     decoder_input = torch.zeros((1, target_tensor.size(1), target_tensor.size(2)), dtype=torch.float, device=device)
     decoder_hidden = encoder_hidden
@@ -76,18 +79,33 @@ def trainIters(train_x, train_y, encoder, decoder, max_length, print_every=1, le
     return print_loss_total
 
 if __name__ == "__main__":
-    path = "./data/chp_op18.mid"
-    piano_data = midiToPianoroll(path, debug=True)
-    print("shape of data ", piano_data.shape)
-    time_len = 20
-    output_len = 20
-    hidden_dim = 256
-    input_dim = 88
-    output_dim = 88
-    epoch = 200
-    input_datax, input_datay = createSeqNetInputs([piano_data], time_len, output_len)
+    parser = argparse.ArgumentParser(description='train a MIDI_NET')
+    parser.add_argument('-e', '--epoch_number', type=int, help='the epoch number you want to train')
+    parser.add_argument('-l', '--load_epoch', type=int, help='the model epoch need to be loaded', default=0)
+    args = parser.parse_args()
+
+    if args.epoch_number <= 0:
+        print("invalid epoch number")
+        exit()
+    epoch = args.epoch_number
+
     encoder1 = EncoderRNN(input_dim, hidden_dim).to(device)
     decoder1 = DecoderRNN(input_dim, hidden_dim).to(device)
+
+    if args.load_epoch != 0:
+        encoder1.load_state_dict(torch.load('../models/encoder_baseline_' + str(args.load_epoch) + '_Adam1e-3'))
+        decoder1.load_state_dict(torch.load('../models/decoder_baseline_' + str(args.load_epoch) + '_Adam1e-3'))
+
+
+    piano_data = midiToPianoroll(path, debug=True)
+    print("shape of data ", piano_data.shape)
+
+    input_datax, input_datay = createSeqNetInputs([piano_data], time_len, output_len)
+
     for i in range(1, epoch+1):
         loss = trainIters(input_datax, input_datay, encoder1, decoder1, max_length=4000)
         print(f'{i} loss {loss}')
+        if i % 50 == 0:
+            torch.save(encoder1.state_dict(), '../models/encoder_baseline_' + str(i + args.load_epoch) + '_Adam1e-3')
+            torch.save(decoder1.state_dict(), '../models/decoder_baseline_' + str(i + args.load_epoch) + '_Adam1e-3')
+

@@ -141,7 +141,7 @@ def createSeqTestNetInputs(pianoroll_data, seq_length):
         pos = 0
         while pos + seq_length < piano_roll.shape[0]:
             x.append(piano_roll[pos:pos + seq_length])
-            pos += 1
+            pos += seq_length
         x_test.append(np.array(x))
 
     print("x_test shape", np.array(x_test).shape)
