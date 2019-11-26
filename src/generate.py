@@ -26,13 +26,13 @@ def generate(input_tensor, encoder, decoder, target_length):
 
     for di in range(target_length):
         decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
-        print(decoder_output.shape)
         decoder_input = torch.where(decoder_output[-1, :, :] > 0.5, ones, zeros)
         decoder_input = decoder_input.unsqueeze(0).detach()  # detach from history as input
         generate_seq.append(decoder_input)
 
     generate_seq = torch.cat(generate_seq, dim=0)
     output = torch.cat([input_tensor, generate_seq], dim=0)
+    print(generate_seq[0])
     return output
 
 

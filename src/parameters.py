@@ -1,5 +1,5 @@
-time_len = 20
-output_len = 20
+time_len = 200
+output_len = 200
 hidden_dim = 256
 input_dim = 88
 output_dim = 88
@@ -10,3 +10,4 @@ CONFIG = {
     "velocity_high": 127,
     "velocity_low": 0
 }
+
