@@ -29,25 +29,24 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer,
     decoder_optimizer.zero_grad()
 
     target_length = target_tensor.size(0)
-    print(input_tensor.shape)
     encoder_output, encoder_hidden = encoder(input_tensor)
     decoder_input = torch.zeros((1, target_tensor.size(1), target_tensor.size(2)), dtype=torch.float, device=device)
     decoder_hidden = encoder_hidden
-    use_teacher_forcing = True
+    ones = torch.ones(input_tensor.size(1), input_tensor.size(2))
+    zeros = torch.zeros(input_tensor.size(1), input_tensor.size(2))
+
     loss = 0
-    if use_teacher_forcing:
-        # Teacher forcing: Feed the target as the next input
-        for di in range(target_length):
-            decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
-            loss += criterion(decoder_output[0], target_tensor[di])
-            decoder_input = target_tensor[di].unsqueeze(0)  # Teacher forcing
-    else:
-        # Without teacher forcing: use its own predictions as the next input
-        for di in range(target_length):
-            decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
-            loss += criterion(decoder_output[0], target_tensor[di])
-            topv, topi = decoder_output.topk(1)
-            decoder_input = topi.squeeze().detach()  # detach from history as input
+
+    # Teacher forcing: Feed the target as the next input
+    for di in range(target_length):
+        decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
+        loss += criterion(decoder_output[0], target_tensor[di])
+
+        if torch.rand(1)[0] > threshold:
+            decoder_input = target_tensor[di].unsqueeze(0)
+        else:
+            decoder_input = torch.where(decoder_output[0, :, :] > 0.5, ones, zeros)
+            decoder_input = decoder_input.unsqueeze(0).detach()  # detach from history as input
 
     loss.backward()
     encoder_optimizer.step()
@@ -70,7 +69,7 @@ def trainIters(train_x, train_y, encoder, decoder, max_length, print_every=1, le
         target_tensor = training_y[iter-1]
         loss = 0
         # torch.random.
-        for i in range(0, input_tensor.size(0), batch_size):
+        for i in range(0, input_tensor.size(1), batch_size):
             loss += train(input_tensor[:, i: i+batch_size, :], target_tensor[:, i: i+batch_size, :],
                           encoder, decoder, encoder_optimizer, decoder_optimizer, criterion, max_length)
 
