@@ -9,8 +9,8 @@ CONFIG = {
     'time_signatures': ['4/4'], # '3/4', '2/4'
     "velocity_high": 127,
     "velocity_low": 0,
-    "tempo": 120.0, # defacult output tempo
-    "velocity": 65 # defacult output velocity
+    "tempo": 120.0, # default output tempo
+    "velocity": 65 # default output velocity
 }
 
 emb_size = 200 # embedding size

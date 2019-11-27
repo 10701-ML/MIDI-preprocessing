@@ -169,16 +169,15 @@ def pianorollToMidi(piano_roll: np.array,
             piano_roll = np.where(piano_roll == 1, CONFIG['velocity'], 0)
     else:
         # making sure this they are all one-hot vecotr (time_length, 128)
-        if not np.all(np.sum(piano_roll, axis=1) == 1):
-            raise ValueError("This is not one-hot vector")
+        # if not np.all(np.sum(piano_roll, axis=1) == 1):
+        #     raise ValueError("This is not one-hot vector")
         reverse_dic = {value: key for key, value in dictionary_dict.items()}
-        piano_tmp = np.zeros((piano_roll.shape[0], 128))
-        id_array = np.argwhere(piano_roll == 1)[:, 1]
-        for i in range(len(id_array)):
-            notes_list = eval(reverse_dic[id_array[i]])
+        piano_tmp = np.zeros((len(piano_roll), 128))
+        # id_array = np.argwhere(piano_roll == 1)[:, 1]
+        for i in range(len(piano_roll)):
+            notes_list = eval(reverse_dic[piano_roll[i]])
             piano_tmp[i, notes_list] = CONFIG['velocity']
-
-
+        piano_roll = piano_tmp
 
     make_sure_path_exists(dir)
     track = Track(piano_roll, is_drum=False, name="piano")
@@ -197,41 +196,26 @@ def load_corpus(path):
 
 if __name__ == "__main__":
     root_path = "../data/"
-    ## 1. test parser
-    # for midi_path in findall_endswith('.mid', root_path):
-    #     result = midiToPianoroll(midi_path, merge=False, velocity=True)
 
-    ## 2. test get_dictionary_of_chord
+    ## 1. test get_dictionary_of_chord
     # get_dictionary_of_chord(root_path # h, two_hand=False)
-    # midi_path = next(findall_endswith('.mid', root_path))
-    # pianoroll_data = midiToPianoroll(midi_path, merge=True, velocity=True)
-
-    ## 3. test pianoroll to midi file
-    # pianorollToMidi(pianoroll_data, name="test_midi.mid", velocity=True)
-
-    ## 4. test createSeqNetInputs
-    # createSeqNetInputs([pianoroll_data], 5, 5)
-
-    ## 5. test nn_input_generator
-    with open("../output/chord_dictionary/two-hand.json", "r") as f:
-        dictionary = json.load(f)
     midi_path = next(findall_endswith('.mid', root_path))
     pianoroll_data = midiToPianoroll(midi_path, merge=True, velocity=True)
-    x, y  =createSeqNetInputs([pianoroll_data], 5, 5, dictionary)
 
-    ## 6. test dic mode output
-    # with open("../output/chord_dictionary/two-hand.json", "r") as f:
-    #     dictionary = json.load(f)
-    # midi_path = next(findall_endswith('.mid', root_path))
-    # pianoroll_data = midiToPianoroll(midi_path, merge=True, velocity=True)
-    # x, y  =get_nn_input([pianoroll_data], 5, 5, dictionary)
-
-    ## 7. test pianoroll2dicModd
+    ## 2. test pianoroll to midi file
+    # pianorollToMidi(pianoroll_data, name="test_midi.mid", velocity=True)
     with open("../output/chord_dictionary/two-hand.json", "r") as f:
         dictionary = json.load(f)
-    midi_path = next(findall_endswith('.mid', root_path))
-    pianoroll_data = midiToPianoroll(midi_path, merge=True, velocity=False)
+
     dic_data = pianoroll2dicMode(pianoroll_data, dictionary)
+    # test pianoroll to midi file for dictionary mode
+    pianorollToMidi(dic_data, name="test_midi.mid", velocity=False, dictionary_dict=dictionary)
+
+    ## 3. create output
+    # x, y = createSeqNetInputs([pianoroll_data], 5, 5)
+    # x, y  =createSeqNetInputs([pianoroll_data], 5, 5, dictionary)
+
+
 
 
 
