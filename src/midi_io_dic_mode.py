@@ -159,18 +159,23 @@ def get_nn_input(pianoroll_data, x_seq_length, y_seq_length, dictionary_dict):
     print(f"number of music: {len(x)}, number of samples = {len(x[0])}, dimension = {len(x[0][0])}")
     print("one sample of x", x[0][300])
     print("one sample of y", y[0][300])
-    print(f"This input needs embedding or {len(dictionary)} dims")
+    print(f"This input needs embedding or {len(dictionary_dict)} dims")
 
     return x, y
 
+
+def load_corpus(path):
+    with open(path, "r") as f:
+        dic = json.load(f)
+    return dic, len(dic)
 if __name__ == "__main__":
     root_path = "../data/"
     ## test parser
     # for midi_path in findall_endswith('.mid', root_path):
     #     result = midiToPianoroll(midi_path, merge=False, velocity=True)
-    #
+
     # ## test get_dictionary_of_chord
-    # # get_dictionary_of_chord(root_path, two_hand=False)
+    #get_dictionary_of_chord(root_pat # h, two_hand=False)
     midi_path = next(findall_endswith('.mid', root_path))
     pianoroll_data = midiToPianoroll(midi_path, merge=True, velocity=False)
     #

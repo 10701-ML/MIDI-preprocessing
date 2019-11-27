@@ -8,6 +8,8 @@ CONFIG = {
     'beat_resolution': 24, # temporal resolution (in time step per beat)
     'time_signatures': ['4/4'], # '3/4', '2/4'
     "velocity_high": 127,
-    "velocity_low": 0
+    "velocity_low": 0,
 }
+
+emb_size = 200 # embedding size
 
