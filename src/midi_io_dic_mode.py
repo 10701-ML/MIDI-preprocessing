@@ -1,4 +1,4 @@
-from pypianoroll import parse, Multitrack
+from pypianoroll import parse, Multitrack, Track
 from midi_io_musegan import findall_endswith, make_sure_path_exists
 import os
 from parameters import CONFIG
@@ -39,7 +39,7 @@ def midiToPianoroll(filepath,
 pianoroll_data: List. One element corresponding to one piece of music
 Do not support multi-track.
 """
-def createSeqNetInputs(pianoroll_data, x_seq_length, y_seq_length):
+def createSeqNetInputs(pianoroll_data: list, x_seq_length: int, y_seq_length: int) -> list:
     x = []
     y = []
 
@@ -106,7 +106,7 @@ def get_dictionary_of_chord(root_path,
         dic_right = dict()
         count_left, count_right = 0, 0
         for midi_path in findall_endswith('.mid', root_path):
-            result = converter(midi_path, merge=False, velocity=False)
+            result = midiToPianoroll(midi_path, merge=False, velocity=False)
             left = result[:, :, 1]
             right = result[:, :, 0]
             lis_left = func(left)
@@ -164,28 +164,63 @@ def get_nn_input(pianoroll_data, x_seq_length, y_seq_length, dictionary_dict):
     return x, y
 
 
+"""
+Write the pianoroll output to midi file. 
+Note: Do not support multi-track yet.
+Input Shape: (n_time_stamp, 128)
+"""
+def pianorollToMidi(piano_roll: np.array,
+                    name="test_midi",
+                    dir="../output/",
+                    velocity=False  # True if the input array contains velocity info (means not binary but continuous)
+                    ):
+    if velocity:
+        piano_roll = np.floor(piano_roll * CONFIG['velocity_high'])
+        piano_roll = np.clip(pianoroll_data, a_min=CONFIG['velocity_low'], a_max=CONFIG['velocity_high'])
+    else:
+        # fill in the default velocity
+        piano_roll = np.where(piano_roll == 1, CONFIG['velocity'], 0)
+        
+    make_sure_path_exists(dir)
+    track = Track(piano_roll, is_drum=False, name="piano")
+    multi_track = Multitrack(tracks=[track],
+                             tempo=CONFIG['tempo'],
+                             downbeat=None,
+                             beat_resolution=CONFIG['beat_resolution'],
+                             )
+    file_name = os.path.join(dir, name if name.endswith(".mid") else name+".mid")
+    multi_track.write(file_name)
+
 def load_corpus(path):
     with open(path, "r") as f:
         dic = json.load(f)
     return dic, len(dic)
 if __name__ == "__main__":
     root_path = "../data/"
-    ## test parser
+    ## 1. test parser
     # for midi_path in findall_endswith('.mid', root_path):
     #     result = midiToPianoroll(midi_path, merge=False, velocity=True)
 
-    # ## test get_dictionary_of_chord
+    ## 2. test get_dictionary_of_chord
     #get_dictionary_of_chord(root_pat # h, two_hand=False)
     midi_path = next(findall_endswith('.mid', root_path))
     pianoroll_data = midiToPianoroll(midi_path, merge=True, velocity=False)
-    #
-    # ## test createSeqNetInputs
+
+    ## 3. test pianoroll to midi file
+    pianorollToMidi(pianoroll_data, name="test_midi.mid")
+
+    ## 4. test createSeqNetInputs
     # createSeqNetInputs([pianoroll_data], 5, 5)
-    # ## test nn_input_generator
-    with open("../output/chord_dictionary/two-hand.json", "r") as f:
-        dictionary = json.load(f)
+
+
+    ## 5. test nn_input_generator
+    # with open("../output/chord_dictionary/two-hand.json", "r") as f:
+    #     dictionary = json.load(f)
     #
-    x, y  =get_nn_input([pianoroll_data], 5, 5, dictionary)
+    # x, y  =get_nn_input([pianoroll_data], 5, 5, dictionary)
+
+
+
 
 
 
