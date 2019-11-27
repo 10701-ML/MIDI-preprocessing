@@ -176,11 +176,11 @@ def pianorollToMidi(piano_roll: np.array,
                     ):
     if velocity:
         piano_roll = np.floor(piano_roll * CONFIG['velocity_high'])
-        piano_roll = np.clip(pianoroll_data, a_min=CONFIG['velocity_low'], a_max=CONFIG['velocity_high'])
+        piano_roll = np.clip(piano_roll, a_min=CONFIG['velocity_low'], a_max=CONFIG['velocity_high'])
     else:
         # fill in the default velocity
         piano_roll = np.where(piano_roll == 1, CONFIG['velocity'], 0)
-        
+
     make_sure_path_exists(dir)
     track = Track(piano_roll, is_drum=False, name="piano")
     multi_track = Multitrack(tracks=[track],
@@ -195,6 +195,7 @@ def load_corpus(path):
     with open(path, "r") as f:
         dic = json.load(f)
     return dic, len(dic)
+
 if __name__ == "__main__":
     root_path = "../data/"
     ## 1. test parser
@@ -204,10 +205,10 @@ if __name__ == "__main__":
     ## 2. test get_dictionary_of_chord
     #get_dictionary_of_chord(root_pat # h, two_hand=False)
     midi_path = next(findall_endswith('.mid', root_path))
-    pianoroll_data = midiToPianoroll(midi_path, merge=True, velocity=False)
+    pianoroll_data = midiToPianoroll(midi_path, merge=True, velocity=True)
 
     ## 3. test pianoroll to midi file
-    pianorollToMidi(pianoroll_data, name="test_midi.mid")
+    pianorollToMidi(pianoroll_data, name="test_midi.mid", velocity=True)
 
     ## 4. test createSeqNetInputs
     # createSeqNetInputs([pianoroll_data], 5, 5)
