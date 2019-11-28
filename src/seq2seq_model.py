@@ -39,17 +39,9 @@ class Sequence(nn.Module):
         self.lstm1 = nn.LSTMCell(input_size=emb_size, hidden_size=hidden_size)
         self.lstm2 = nn.LSTMCell(input_size=hidden_size, hidden_size=hidden_size)
         self.linear = nn.Linear(hidden_size, 1)
-        self.drop1 = nn.Dropout(p = 0.2)
+        # self.drop1 = nn.Dropout(p = 0.2)
         self.softmax = nn.Softmax()
-        self.out = nn.Sequential(nn.Embedding(token_size, emb_size),
-            nn.LSTMCell(input_size=emb_size, hidden_size=hidden_size),
-            nn.Dropout(p = 0.2),
-            nn.LSTMCell(hidden_size, hidden_size=hidden_size),
-            nn.Dropout(p = 0.2),
-            nn.Linear(hidden_size, out_features=token_size),
-            nn.ReLU(),
-            nn.Softmax()
-            )
+
 
     def forward(self, input):
         return self.out(input)
