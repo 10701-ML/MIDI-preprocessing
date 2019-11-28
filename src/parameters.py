@@ -14,4 +14,5 @@ CONFIG = {
 }
 
 emb_size = 200 # embedding size
+root_path = "../data/"
 
