@@ -13,6 +13,8 @@ CONFIG = {
     "velocity": 65 # default output velocity
 }
 
+END_TOKEN = 0
+SILENCE_TOEKN = 1
 emb_size = 200 # embedding size
 root_path = "../data/"
 
