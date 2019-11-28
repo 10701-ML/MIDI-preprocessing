@@ -213,7 +213,7 @@ if __name__ == "__main__":
 
     ## 3. create output
     # x, y = createSeqNetInputs([pianoroll_data], 5, 5)
-    # x, y  =createSeqNetInputs([pianoroll_data], 5, 5, dictionary)
+    x, y = createSeqNetInputs([pianoroll_data], 5, 5, dictionary)
 
 
 

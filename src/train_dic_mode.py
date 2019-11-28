@@ -7,8 +7,9 @@ from torch import nn
 import time
 import math
 import argparse
+import json
 
-from src.midi_io_dic_mode import get_nn_input
+from midi_io_dic_mode import *
 
 device = torch.device("cpu")
 
@@ -98,8 +99,8 @@ if __name__ == "__main__":
 
     root_path = "../data/"
     midi_path = next(findall_endswith('.mid', root_path))
-    pianoroll_data = midiToPianoroll(midi_path, merge=True, velocity=False)
-    input_datax, input_datay = get_nn_input([pianoroll_data], 5, 5, corpus)
+    pianoroll_data = midiToPianoroll(midi_path, corpus)
+    input_datax, input_datay = createSeqNetInputs([pianoroll_data], 5, 5, corpus)
 
     print("shape of data ", pianoroll_data.shape)
 
