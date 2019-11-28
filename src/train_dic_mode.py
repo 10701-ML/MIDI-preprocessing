@@ -99,7 +99,7 @@ if __name__ == "__main__":
 
     root_path = "../data/"
     midi_path = next(findall_endswith('.mid', root_path))
-    pianoroll_data = midiToPianoroll(midi_path, corpus)
+    pianoroll_data = midiToPianoroll(midi_path, merge=True, velocity=False)
     input_datax, input_datay = createSeqNetInputs([pianoroll_data], 5, 5, corpus)
 
     print("shape of data ", pianoroll_data.shape)
