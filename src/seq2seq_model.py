@@ -36,12 +36,15 @@ class Sequence(nn.Module):
         super(Sequence, self).__init__()
         self.emb_size = emb_size
         self.Emb = nn.Embedding(token_size, emb_size)
-        self.lstm1 = nn.LSTMCell(input_size=emb_size, hidden_size=hidden_size)
-        self.lstm2 = nn.LSTMCell(input_size=hidden_size, hidden_size=hidden_size)
-        self.linear = nn.Linear(hidden_size, 1)
-        # self.drop1 = nn.Dropout(p = 0.2)
-        self.softmax = nn.Softmax()
-
+        self.lstm1 = nn.LSTM(input_size=emb_size, hidden_size=hidden_size)
+        self.lstm2 = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size)
+        self.linear = nn.Linear(hidden_size, token_size)
+        self.drop1 = nn.Dropout(p = 0.2)
 
     def forward(self, input):
-        return self.out(input)
+        x = self.Emb(input) 
+        x, _ = self.lstm1(x)
+        #x = self.drop1(x)
+        x, _ = self.lstm2(x)
+        x = self.linear(x)
+        return x

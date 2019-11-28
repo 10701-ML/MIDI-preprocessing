@@ -26,56 +26,31 @@ def timeSince(since, percent):
     rs = es - s
     return '%s (- %s)' % (asMinutes(s), asMinutes(rs))
 
-def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer,
-          decoder_optimizer, criterion, max_length):
-    encoder_optimizer.zero_grad()
-    decoder_optimizer.zero_grad()
-
-    target_length = target_tensor.size(0)
-    encoder_output, encoder_hidden = encoder(input_tensor)
-    decoder_input = torch.zeros((1, target_tensor.size(1), target_tensor.size(2)), dtype=torch.float, device=device)
-    decoder_hidden = encoder_hidden
-    ones = torch.ones(input_tensor.size(1), input_tensor.size(2))
-    zeros = torch.zeros(input_tensor.size(1), input_tensor.size(2))
-
-    loss = 0
-
-    # Teacher forcing: Feed the target as the next input
-    for di in range(target_length):
-        decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
-        loss += criterion(decoder_output[0], target_tensor[di])
-
-        if torch.rand(1)[0] > threshold:
-            decoder_input = target_tensor[di].unsqueeze(0)
-        else:
-            decoder_input = torch.where(decoder_output[0, :, :] > 0.5, ones, zeros)
-            decoder_input = decoder_input.unsqueeze(0).detach()  # detach from history as input
-
-    loss.backward()
-    encoder_optimizer.step()
-    decoder_optimizer.step()
-
-    return loss.item() / target_length
-
 
 def trainIters(train_x, train_y, model, max_length, learning_rate=1e-3, batch_size=32):
+    model.train()
     print_loss_total = 0  # Reset every print_every
 
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    training_x = torch.tensor(train_x, dtype=torch.float) # (num_of_songs, num_of_samples, time_len)
-    training_y = torch.tensor(train_y, dtype=torch.float)
     criterion = nn.CrossEntropyLoss()
+    training_x = torch.tensor(train_x, dtype=torch.long) # (num_of_songs, num_of_samples, time_len)
+    training_y = torch.tensor(train_y, dtype=torch.long)
     for iter in range(1, training_x.size(0)+1): # iterate each sone
+        optimizer.zero_grad()
         input_tensor = training_x[iter-1]
         target_tensor = training_y[iter-1]
         loss = 0
         # torch.random.
-        for i in range(0, input_tensor.size(0), batch_size):
-            input_tensor = input_tensor[i: i+batch_size, :] #(batch_size, time_len)
-            target_tensor = target_tensor[i: i+batch_size, :]
-            optimizer.zero_grad()
-            output = model(input_tensor)
-            loss += criterion(output, target_tensor)
+        for i in range(0, input_tensor.size(1), batch_size):
+            input_tensor_batch = input_tensor[:, i : i+batch_size] #(batch_size, time_len)
+            target_tensor_batch = target_tensor[:, i: i+batch_size]
+            output = model(input_tensor_batch)
+            output = output.reshape(-1, token_size)
+            target_tensor_batch = target_tensor_batch.reshape(-1)
+            loss += criterion(output, target_tensor_batch)
+
+        loss.backward()
+        optimizer.step()
 
         print_loss_total += loss
     return print_loss_total

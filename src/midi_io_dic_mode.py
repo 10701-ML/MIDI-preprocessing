@@ -216,7 +216,8 @@ if __name__ == "__main__":
     root_path = "../data/"
 
     ## 1. test get_dictionary_of_chord
-    get_dictionary_of_chord(root_path, two_hand=True)
+    #get_dictionary_of_chord(root_path, two_hand=True)
+    #'''
     midi_path = next(findall_endswith('.mid', root_path))
     pianoroll_data = midiToPianoroll(midi_path, merge=True, velocity=True)
 
@@ -228,16 +229,7 @@ if __name__ == "__main__":
     # # test pianoroll to midi file for dictionary mode
     pianorollToMidi(dic_data, name="test_midi.mid", velocity=False, dictionary_dict=dictionary)
 
-    # ## 3. create output
-    # # x, y = createSeqNetInputs([pianoroll_data], 5, 5)
-    # x, y = createSeqNetInputs([pianoroll_data], 5, 5, dictionary)
-
-
-
-
-
-
-
-
-
-
+    ## 3. create output
+    # x, y = createSeqNetInputs([pianoroll_data], 5, 5)
+    x, y = createSeqNetInputs([pianoroll_data], 5, 5, dictionary)
+    #'''
