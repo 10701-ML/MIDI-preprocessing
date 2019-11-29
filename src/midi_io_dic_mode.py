@@ -1,4 +1,5 @@
 from pypianoroll import Multitrack, Track
+from pretty_midi import PrettyMIDI
 from midi_io_musegan import findall_endswith, make_sure_path_exists
 import os
 from parameters import *
@@ -216,9 +217,9 @@ if __name__ == "__main__":
     root_path = "../data/"
 
     ## 1. test get_dictionary_of_chord
-    #get_dictionary_of_chord(root_path, two_hand=True)
+    get_dictionary_of_chord(root_path, two_hand=True)
     #'''
-    midi_path = next(findall_endswith('.mid', root_path))
+    midi_path = "../data/chpn_op7_1.mid"
     pianoroll_data = midiToPianoroll(midi_path, merge=True, velocity=True)
 
     # ## 2. test pianoroll to midi file
