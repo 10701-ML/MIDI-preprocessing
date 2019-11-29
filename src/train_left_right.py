@@ -40,9 +40,9 @@ def trainIters(train_x, train_y, model, token_size, learning_rate=1e-3, batch_si
         loss = 0
         # torch.random.
         for i in range(0, input_tensor.size(1), batch_size):
-            input_tensor_batch = input_tensor[:, i : i+batch_size] #(batch_size, time_len)
+            input_tensor_batch = input_tensor[:, i : i+batch_size] #(time_len, batch_size)
             target_tensor_batch = target_tensor[:, i: i+batch_size]
-            output = model(input_tensor_batch)
+            output, _ = model(input_tensor_batch)
             output = output.reshape(-1, token_size)
             target_tensor_batch = target_tensor_batch.reshape(-1)
             loss += criterion(output, target_tensor_batch)
@@ -54,27 +54,36 @@ def trainIters(train_x, train_y, model, token_size, learning_rate=1e-3, batch_si
     return print_loss_total
 
 def train_right():
-    get_dictionary_of_chord(root_path, two_hand=False)
-    midi_path = "../data/chpn_op7_1.mid"
-    right_corpus, right_token_size = load_corpus("../output/chord_dictionary/right-hand.json")
-    pianoroll_data = midiToPianoroll(midi_path, merge=False, velocity=False) # (n_time_stamp, 128, num_track)
-    right_track = pianoroll_data[:, :, 0]
-    input_datax, input_datay = createSeqNetInputs([right_track],time_len , output_len, right_corpus)
-    model = Sequence(right_token_size, emb_size, hidden_dim)
 
-    print("shape of data ", pianoroll_data.shape)
-    epoch = 50
-    for i in range(1, epoch+1):
-        loss = trainIters(input_datax, input_datay, model, token_size=right_token_size)
-        print(f'{i} loss {loss}')
-        if i % 50 == 0:
-            torch.save(model.state_dict(), '../models/deepjazz_baseline_' + str(i + args.load_epoch) + '_Adam1e-3')
 
     return model
 
 def generate_right(model):
-
+    pass
 
 if __name__ == "__main__":
-    model = train_right()
+    midi_path = "../data/chpn_op7_1.mid"
+    model_name = "left_right"
+    target_length = 100
+
+    # step 1 : get the dictionary
+    # get_dictionary_of_chord(root_path, two_hand=False)
+    right_corpus, right_token_size = load_corpus("../output/chord_dictionary/right-hand.json")
+    pianoroll_data = midiToPianoroll(midi_path, merge=False, velocity=False) # (n_time_stamp, 128, num_track)
+    right_track, left_track = pianoroll_data[:, :, 0], pianoroll_data[:, :, 1]
+    input_datax, input_datay = createSeqNetInputs([right_track], time_len , output_len, right_corpus)
+    model = Sequence(right_token_size, emb_size, hidden_dim)
+    print("shape of data ", pianoroll_data.shape)
+    epoch = 1
+    for i in range(1, epoch+1):
+        loss = trainIters(input_datax, input_datay, model, token_size=right_token_size)
+        print(f'{i} loss {loss}')
+        if i % 50 == 0:
+            torch.save(model.state_dict(), f'../models/{model_name}_' + str(i + args.load_epoch) + '_Adam1e-3')
+
+    output, generate_seq = generate(input_datax, model, target_length)
+    output = [x.item() for x in output]
+    generate_seq = [x.item() for x in generate_seq]
+
+
 
