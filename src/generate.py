@@ -32,8 +32,6 @@ def generate(input_tensor, model, target_length):
     output = torch.cat([input_tensor, generate_seq.unsqueeze(1)], dim=0).squeeze(1)
     return output, generate_seq
 
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='generate a MIDI')
     parser.add_argument('-t', '--target_length', type=int, help='the target length')
