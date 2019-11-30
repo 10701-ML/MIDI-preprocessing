@@ -9,6 +9,7 @@ import math
 import argparse
 
 device = torch.device("cpu")
+token_size = 0
 
 def asMinutes(s):
     m = math.floor(s / 60)
@@ -30,23 +31,23 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer,
 
     target_length = target_tensor.size(0)
     encoder_output, encoder_hidden = encoder(input_tensor)
-    decoder_input = torch.zeros((1, target_tensor.size(1), target_tensor.size(2)), dtype=torch.float, device=device)
+    decoder_input = torch.zeros((1, target_tensor.size(1)), dtype=torch.long, device=device)
     decoder_hidden = encoder_hidden
-    ones = torch.ones(input_tensor.size(1), input_tensor.size(2))
-    zeros = torch.zeros(input_tensor.size(1), input_tensor.size(2))
 
     loss = 0
 
     # Teacher forcing: Feed the target as the next input
     for di in range(target_length):
         decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
+
         loss += criterion(decoder_output[0], target_tensor[di])
+
+        prediction = torch.argmax(decoder_output[0], dim=1)
 
         if torch.rand(1)[0] > threshold:
             decoder_input = target_tensor[di].unsqueeze(0)
         else:
-            decoder_input = torch.where(decoder_output[0, :, :] > 0.5, ones, zeros)
-            decoder_input = decoder_input.unsqueeze(0).detach()  # detach from history as input
+            decoder_input = prediction.unsqueeze(0).detach()  # detach from history as input
 
     loss.backward()
     encoder_optimizer.step()
@@ -59,11 +60,11 @@ def trainIters(train_x, train_y, encoder, decoder, max_length, print_every=1, le
     start = time.time()
     print_loss_total = 0  # Reset every print_every
 
-    encoder_optimizer = optim.Adam(encoder.parameters(), lr=learning_rate)
-    decoder_optimizer = optim.Adam(decoder.parameters(), lr=learning_rate)
-    training_x = torch.tensor(train_x, dtype=torch.float)
-    training_y = torch.tensor(train_y, dtype=torch.float)
-    criterion = nn.BCELoss(reduction="sum")
+    encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate, momentum=0.9)
+    decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate, momentum=0.9)
+    training_x = torch.tensor(train_x, dtype=torch.long)
+    training_y = torch.tensor(train_y, dtype=torch.long)
+    criterion = nn.CrossEntropyLoss()
     for iter in range(1, training_x.size(0)+1): # iterate each sone
         input_tensor = training_x[iter-1]
         target_tensor = training_y[iter-1]
@@ -83,38 +84,35 @@ if __name__ == "__main__":
     parser.add_argument('-l', '--load_epoch', type=int, help='the model epoch need to be loaded', default=0)
     args = parser.parse_args()
 
-    if args.epoch_number <= 0:
-        print("invalid epoch number")
-        exit()
-    epoch = args.epoch_number
-
-    encoder1 = EncoderRNN(input_dim, hidden_dim).to(device)
-    decoder1 = DecoderRNN(input_dim, hidden_dim).to(device)
-
-    if args.load_epoch != 0:
-        encoder1.load_state_dict(torch.load('../models/encoder_baseline_' + str(args.load_epoch) + '_Adam1e-3'))
-        decoder1.load_state_dict(torch.load('../models/decoder_baseline_' + str(args.load_epoch) + '_Adam1e-3'))
-
     get_dictionary_of_chord(root_path, two_hand=True)
     midi_path = next(findall_endswith('.mid', root_path))
     piano_roll_data = midiToPianoroll(midi_path, merge=True, velocity=False)
-
 
     with open("../output/chord_dictionary/two-hand.json", "r") as f:
         dictionary = json.load(f)
 
     dic_data = pianoroll2dicMode(piano_roll_data, dictionary)
+    _, token_size = load_corpus("../output/chord_dictionary/two-hand.json")
+
+    if args.epoch_number <= 0:
+        print("invalid epoch number")
+        exit()
+    epoch = args.epoch_number
+
+    encoder1 = EncoderRNN(token_size, emb_size, hidden_dim).to(device)
+    decoder1 = DecoderRNN(token_size, emb_size, hidden_dim, encoder1.embedding).to(device)
+
+    if args.load_epoch != 0:
+        encoder1.load_state_dict(torch.load('../models/encoder_dict_' + str(args.load_epoch) + '_Adam1e-3'))
+        decoder1.load_state_dict(torch.load('../models/decoder_dict_' + str(args.load_epoch) + '_Adam1e-3'))
+
 
     input_datax, input_datay = createSeqNetInputs([piano_roll_data], time_len, output_len, dictionary)
 
-    print(len(input_datax))
-    print(input_datax[0])
-    print(len(input_datay))
-    print(input_datay[0])
     for i in range(1, epoch+1):
         loss = trainIters(input_datax, input_datay, encoder1, decoder1, max_length=4000)
         print(f'{i} loss {loss}')
         if i % 50 == 0:
-            torch.save(encoder1.state_dict(), '../models/encoder_baseline_' + str(i + args.load_epoch) + '_Adam1e-3')
-            torch.save(decoder1.state_dict(), '../models/decoder_baseline_' + str(i + args.load_epoch) + '_Adam1e-3')
+            torch.save(encoder1.state_dict(), '../models/encoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
+            torch.save(decoder1.state_dict(), '../models/decoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
 

@@ -5,26 +5,30 @@ import torch.nn.functional as F
 
 
 class EncoderRNN(nn.Module):
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, token_size, embed_size, hidden_size):
         super(EncoderRNN, self).__init__()
         self.hidden_size = hidden_size
-        self.gru = nn.GRU(input_size=input_size, hidden_size=hidden_size)
+        self.embedding = nn.Embedding(token_size, embed_size)
+        self.gru = nn.GRU(input_size=embed_size, hidden_size=hidden_size)
 
-    def forward(self, input):
-        output, hidden = self.gru(input)
+    def forward(self, input):         # [S, N]
+        input = self.embedding(input)  # [S, N, E]
+        output, hidden = self.gru(input)  # [S, N, H]
         return output, hidden
 
 
 class DecoderRNN(nn.Module):
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, token_size, embed_size, hidden_size, embedding):
         super(DecoderRNN, self).__init__()
         self.hidden_size = hidden_size
-        self.gru = nn.GRU(input_size, hidden_size)
+        self.embedding = embedding
+        self.gru = nn.GRU(embed_size, hidden_size)
         self.sigmoid = nn.Sigmoid()
-        self.linear = nn.Linear(hidden_size, input_size)
+        self.linear = nn.Linear(hidden_size, token_size)
         self.sigmoid = nn.Sigmoid()
 
-    def forward(self, input, hidden):
+    def forward(self, input, hidden):   # [1, N, H]
+        input = self.embedding(input)  # [1, N, E]
         output, hidden = self.gru(input, hidden)
         output = self.linear(output)
         output = self.sigmoid(output)

@@ -206,6 +206,7 @@ if __name__ == "__main__":
     # pianorollToMidi(pianoroll_data, name="test_midi.mid", velocity=True)
     with open("../output/chord_dictionary/two-hand.json", "r") as f:
         dictionary = json.load(f)
+    load_corpus("../output/chord_dictionary/two-hand.json")
 
     dic_data = pianoroll2dicMode(pianoroll_data, dictionary)
     # test pianoroll to midi file for dictionary mode
