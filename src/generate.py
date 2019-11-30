@@ -1,5 +1,5 @@
-from seq2seq_model import DecoderRNN, EncoderRNN
-from midi_io import midiToPianoroll, seqNetOutToPianoroll, pianorollToMidi
+from seq2seq_model import Sequence
+from midi_io_dic_mode import *
 from parameters import *
 import torch
 from torch import optim
@@ -11,29 +11,26 @@ import numpy as np
 
 device = torch.device("cpu")
 
-def generate(input_tensor, encoder, decoder, target_length):
-    encoder.eval()
-    decoder.eval()
+def generate(input_tensor, model, target_length):
+    model.eval()
 
-    encoder_output, encoder_hidden = encoder(input_tensor)
-    decoder_input = torch.zeros((1, input_tensor.size(1), input_tensor.size(2)), dtype=torch.float, device=device)
-    decoder_hidden = encoder_hidden
-
-    ones = torch.ones(input_tensor.size(1), input_tensor.size(2))
-    zeros = torch.zeros(input_tensor.size(1), input_tensor.size(2))
-
+    print(input_tensor.shape)
+    output, hidden = model(input_tensor)
+    prediction = torch.argmax(output[-1, :, :], dim=1)
     generate_seq = []
+    input = prediction.unsqueeze(0).detach()
+    generate_seq.append(prediction)
 
-    for di in range(target_length):
-        decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
-        decoder_input = torch.where(decoder_output[-1, :, :] > 0.5, ones, zeros)
-        decoder_input = decoder_input.unsqueeze(0).detach()  # detach from history as input
-        generate_seq.append(decoder_input)
+    for di in range(target_length - 1):
+        output, hidden = model(input, hidden)
+        prediction = torch.argmax(output[-1, :, :], dim=1)
+        input = prediction.unsqueeze(0).detach()  # detach from history as input
+        generate_seq.append(prediction)
 
     generate_seq = torch.cat(generate_seq, dim=0)
-    output = torch.cat([input_tensor, generate_seq], dim=0)
-    print(generate_seq[0])
-    return output
+    print(generate_seq)
+    output = torch.cat([input_tensor, generate_seq.unsqueeze(1)], dim=0).squeeze(1)
+    return output, generate_seq
 
 
 
@@ -56,17 +53,23 @@ if __name__ == "__main__":
         print("invalid load epoch")
         exit()
 
-    piano_data = midiToPianoroll(path, debug=True)
-    print("shape of data ", piano_data.shape)
+    corpus, token_size = load_corpus("../output/chord_dictionary/two-hand.json")  # get the corpus of the chords
+    midi_path = next(findall_endswith('.mid', root_path))
+    pianoroll_data = midiToPianoroll(midi_path, merge=True, velocity=True)
 
-    input_datax = torch.from_numpy(piano_data[0:args.origin_length, :]).unsqueeze(1).float()
+    piano_data = pianoroll2dicMode(pianoroll_data, corpus)
 
-    encoder1 = EncoderRNN(input_dim, hidden_dim).to(device)
-    decoder1 = DecoderRNN(input_dim, hidden_dim).to(device)
+    input_datax = torch.tensor(piano_data[:args.origin_length], dtype=torch.long).unsqueeze(1)
 
-    encoder1.load_state_dict(torch.load('../models/encoder_baseline_' + str(args.load_epoch) + '_Adam1e-3'))
-    decoder1.load_state_dict(torch.load('../models/decoder_baseline_' + str(args.load_epoch) + '_Adam1e-3'))
+    model = Sequence(token_size, emb_size, hidden_dim)
 
-    output = generate(input_datax, encoder1, decoder1, args.target_length)
-    piano_roll = seqNetOutToPianoroll(output)
-    pianorollToMidi(piano_roll, "../output/test.mid")
+    model.load_state_dict(torch.load('../models/dictRNN_' + str(args.load_epoch) + '_Adam1e-3'))
+
+    output, generate_seq = generate(input_datax, model, args.target_length)
+    output = [x.item() for x in output]
+    generate_seq = [x.item() for x in generate_seq]
+    pianorollToMidi(output, name="test_midi", dir="../output/", velocity=False,  # True if the input array contains velocity info (means not binary but continuous)
+                    dictionary_dict = corpus) # True if the using the dic mode)
+    pianorollToMidi(generate_seq, name="test_midi_gen", dir="../output/", velocity=False,
+                    # True if the input array contains velocity info (means not binary but continuous)
+                    dictionary_dict=corpus)  # True if the using the dic mode)
