@@ -44,7 +44,7 @@ def trainIters(train_x, train_y, model, max_length, learning_rate=1e-3, batch_si
         for i in range(0, input_tensor.size(1), batch_size):
             input_tensor_batch = input_tensor[:, i : i+batch_size] #(batch_size, time_len)
             target_tensor_batch = target_tensor[:, i: i+batch_size]
-            output = model(input_tensor_batch)
+            output, _ = model(input_tensor_batch)
             output = output.reshape(-1, token_size)
             target_tensor_batch = target_tensor_batch.reshape(-1)
             loss += criterion(output, target_tensor_batch)

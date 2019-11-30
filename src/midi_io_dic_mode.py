@@ -179,24 +179,12 @@ def pianorollToMidi(piano_roll: np.array,
             piano_roll = np.clip(piano_roll, a_min=CONFIG['velocity_low'], a_max=CONFIG['velocity_high'])
         else:
             # fill in the default velocity
-            piano_roll = np.where(piano_roll == 1, CONFIG['velocity'], 0)
+            piano_roll = np.where(piano_roll == 1, CONFIG['velocity'], piano_roll)
     else:
         # making sure this they are all one-hot vecotr (time_length, 128)
         # if not np.all(np.sum(piano_roll, axis=1) == 1):
         #     raise ValueError("This is not one-hot vector")
-        reverse_dic = {value: key for key, value in dictionary_dict.items()}
-        piano_tmp = np.zeros((len(piano_roll), 128))
-        # id_array = np.argwhere(piano_roll == 1)[:, 1]
-        for i in range(len(piano_roll)):
-            notes_list = eval(reverse_dic[piano_roll[i]])
-            if notes_list is None:
-                break
-            elif len(notes_list) == 0:
-                continue
-            else:
-                piano_tmp[i, notes_list] = CONFIG['velocity']
-
-        piano_roll = piano_tmp
+        piano_roll = dic2pianoroll(piano_roll, dictionary_dict)
 
     make_sure_path_exists(dir)
     track = Track(piano_roll, is_drum=False, name="piano")
@@ -207,6 +195,22 @@ def pianorollToMidi(piano_roll: np.array,
                              )
     file_name = os.path.join(dir, name if name.endswith(".mid") else name+".mid")
     multi_track.write(file_name)
+
+def dic2pianoroll(chord_list, dictionary):
+    reverse_dic = {value: key for key, value in dictionary.items()}
+    piano_tmp = np.zeros((len(chord_list), 128))
+    # id_array = np.argwhere(piano_roll == 1)[:, 1]
+    for i in range(len(chord_list)):
+        notes_list = eval(reverse_dic[chord_list[i]])
+        if notes_list is None:
+            break
+        elif len(notes_list) == 0:
+            continue
+        else:
+            piano_tmp[i, notes_list] = CONFIG['velocity']
+
+    piano_roll = piano_tmp
+    return piano_roll
 
 def load_corpus(path):
     with open(path, "r") as f:
