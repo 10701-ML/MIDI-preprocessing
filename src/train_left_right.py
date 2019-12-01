@@ -42,7 +42,6 @@ def trainIters(train_x, train_y, model, token_size, learning_rate=1e-3, batch_si
         input_tensor = training_x[iter-1]
         target_tensor = training_y[iter-1]
         loss = 0
-        # torch.random.
         for i in range(0, input_tensor.size(1), batch_size):
             input_tensor_batch = input_tensor[:, i : i+batch_size]  #(time_len, batch_size)
             target_tensor_batch = target_tensor[:, i: i+batch_size] #(time_len, batch_size)
@@ -116,7 +115,7 @@ if __name__ == "__main__":
     # step 2 : generated the right-hand music
     pianoroll_data = midiToPianoroll(midi_path, merge=False, velocity=False) # (n_time_stamp, 128, num_track)
     right_track, left_track = pianoroll_data[:, :, 0], pianoroll_data[:, :, 1]
-    input_datax, input_datay = createSeqNetInputs([right_track], time_len , output_len, right_corpus)
+    input_datax, input_datay = createSeqNetInputs([right_track], time_len , 1, right_corpus)
     model = Sequence(right_token_size, emb_size, hidden_dim)
 
     print("shape of data ", pianoroll_data.shape)

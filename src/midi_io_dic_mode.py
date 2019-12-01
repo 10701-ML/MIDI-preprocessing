@@ -42,11 +42,10 @@ Do not support multi-track.
 Pass value to `dictionary_dict` would let this function to generate one-hot output
 """
 def createSeqNetInputs(pianoroll_data: list, x_seq_length: int, y_seq_length: int,
-                       dictionary_dict=None #
+                       dictionary_dict=None,#
                        ) -> list:
     x = []
     y = []
-
     for i, piano_roll in enumerate(pianoroll_data):
         size = piano_roll.shape[0]
         if dictionary_dict:
