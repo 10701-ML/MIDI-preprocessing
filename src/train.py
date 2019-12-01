@@ -99,7 +99,6 @@ if __name__ == "__main__":
     midi_path = next(findall_endswith('.mid', root_path))
     piano_roll_data = midiToPianoroll(midi_path, merge=True, velocity=False)
 
-
     with open("../output/chord_dictionary/two-hand.json", "r") as f:
         dictionary = json.load(f)
 
