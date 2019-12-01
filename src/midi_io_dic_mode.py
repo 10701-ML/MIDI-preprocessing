@@ -41,7 +41,7 @@ pianoroll_data: List. One element corresponding to one piece of music
 Do not support multi-track.
 Pass value to `dictionary_dict` would let this function to generate one-hot output
 """
-def createSeqNetInputs(pianoroll_data: list, x_seq_length: int, y_seq_length: int,
+def createSeqNetInputs(pianoroll_data: list, x_seq_length: int, lagging: int,
                        dictionary_dict=None,#
                        ) -> list:
     x = []
@@ -55,9 +55,9 @@ def createSeqNetInputs(pianoroll_data: list, x_seq_length: int, y_seq_length: in
         pos = 0
         x_tmp = []
         y_tmp = []
-        while pos + x_seq_length + y_seq_length < size:
+        while pos + x_seq_length + lagging < size:
             x_tmp.append(piano_roll[pos:pos + x_seq_length])
-            y_tmp.append(piano_roll[pos + x_seq_length: pos + x_seq_length + y_seq_length])
+            y_tmp.append(piano_roll[pos + lagging: pos + x_seq_length + lagging])
             pos += x_seq_length
 
         x_tmp = np.stack(x_tmp, axis=1)

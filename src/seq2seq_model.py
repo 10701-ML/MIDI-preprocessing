@@ -41,13 +41,13 @@ class Sequence(nn.Module):
         self.linear = nn.Linear(hidden_size, token_size)
         self.drop1 = nn.Dropout(p = 0.2)
 
-    def forward(self, input, hiddens = None):
+    def forward(self, input, hiddens=None):
         x = self.Emb(input)
-
         if hiddens != None:
             x, hidden_1 = self.lstm1(x, hiddens[0])
             #x = self.drop1(x)
             x, hidden_2 = self.lstm2(x, hiddens[1])
+
         else:
             x, hidden_1 = self.lstm1(x)
             # x = self.drop1(x)

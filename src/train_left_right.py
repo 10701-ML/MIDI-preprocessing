@@ -43,23 +43,21 @@ def trainIters(train_x, train_y, model, token_size, learning_rate=1e-3, batch_si
         target_tensor = training_y[iter-1]
         loss = 0
         for i in range(0, input_tensor.size(1), batch_size):
-            input_tensor_batch = input_tensor[:, i : i+batch_size]  #(time_len, batch_size)
-            target_tensor_batch = target_tensor[:, i: i+batch_size] #(time_len, batch_size)
+            input_tensor_batch = input_tensor[:, i: i+batch_size]   #(time_len, batch_size)
+            target_tensor_batch = target_tensor[:, i: i+batch_size]  #(time_len, batch_size)
             target_size = input_tensor_batch.size(0)
-            input = input_tensor_batch[0:1, :]
+            input = torch.zeros_like(input_tensor_batch[0:1, :])
             hidden = None
             for di in range(target_size):
                 output, hidden = model(input, hidden)
                 target = target_tensor_batch[di, :]
                 output = output.reshape(-1, token_size)
-                print("input shape: ", input.shape)
-                print("output shape: ", output.shape)
                 loss += criterion(output, target)
 
                 if torch.rand(1)[0] > threshold:
                     input = input_tensor_batch[di].unsqueeze(0)
                 else:
-                    input = torch.argmax(output, dim=0)
+                    input = torch.argmax(output, dim=1)
                     input = input.unsqueeze(0).detach()
 
         loss.backward()
@@ -117,9 +115,8 @@ if __name__ == "__main__":
     right_track, left_track = pianoroll_data[:, :, 0], pianoroll_data[:, :, 1]
     input_datax, input_datay = createSeqNetInputs([right_track], time_len , 1, right_corpus)
     model = Sequence(right_token_size, emb_size, hidden_dim)
-
     print("shape of data ", pianoroll_data.shape)
-    epoch = 1000
+    epoch = 500
     for i in range(1, epoch+1):
         loss = trainIters(input_datax, input_datay, model, token_size=right_token_size)
         print(f'{i} loss {loss}')
