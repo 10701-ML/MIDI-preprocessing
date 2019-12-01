@@ -1,4 +1,5 @@
-from seq2seq_model import DecoderRNN, EncoderRNN
+# from seq2seq_model import DecoderRNN, EncoderRNN
+from seq2seq_model import EncoderRNN, AttnDecoderRNN
 from midi_io_dic_mode import *
 from parameters import *
 import torch
@@ -26,11 +27,24 @@ def timeSince(since, percent):
 
 def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer,
           decoder_optimizer, criterion, max_length):
+    encoder_hidden = torch.zeros(1, 1, encoder.hidden_size, device=device)
+
     encoder_optimizer.zero_grad()
     decoder_optimizer.zero_grad()
 
+    input_length = input_tensor.size(0)
     target_length = target_tensor.size(0)
+
+    encoder_outputs = torch.zeros(max_length, encoder.hidden_size, device=device)
+    
     encoder_output, encoder_hidden = encoder(input_tensor)
+    '''
+    for ei in range(input_length):
+        encoder_output, encoder_hidden = encoder(input_tensor[ei])
+        encoder_outputs[ei] = encoder_output[0]
+    '''
+    encoder_outputs = encoder_output[0]
+    
     decoder_input = torch.zeros((1, target_tensor.size(1)), dtype=torch.long, device=device)
     decoder_hidden = encoder_hidden
 
@@ -38,7 +52,9 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer,
 
     # Teacher forcing: Feed the target as the next input
     for di in range(target_length):
-        decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
+        #decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
+        decoder_output, decoder_hidden, decoder_attention = decoder(
+                decoder_input, decoder_hidden, encoder_outputs)
 
         loss += criterion(decoder_output[0], target_tensor[di])
 
@@ -100,19 +116,22 @@ if __name__ == "__main__":
     epoch = args.epoch_number
 
     encoder1 = EncoderRNN(token_size, emb_size, hidden_dim).to(device)
-    decoder1 = DecoderRNN(token_size, emb_size, hidden_dim, encoder1.embedding).to(device)
-
+    #decoder1 = DecoderRNN(token_size, emb_size, hidden_dim, encoder1.embedding).to(device)
+    attn_decoder1 = AttnDecoderRNN(token_size, emb_size, hidden_dim, encoder1.embedding, dropout_p=0.1).to(device)
+    '''
     if args.load_epoch != 0:
         encoder1.load_state_dict(torch.load('../models/encoder_dict_' + str(args.load_epoch) + '_Adam1e-3'))
         decoder1.load_state_dict(torch.load('../models/decoder_dict_' + str(args.load_epoch) + '_Adam1e-3'))
-
+    '''
 
     input_datax, input_datay = createSeqNetInputs([piano_roll_data], time_len, output_len, dictionary)
 
     for i in range(1, epoch+1):
-        loss = trainIters(input_datax, input_datay, encoder1, decoder1, max_length=4000)
+        #loss = trainIters(input_datax, input_datay, encoder1, decoder1, max_length=4000)
+        loss = trainIters(input_datax, input_datay, encoder1, attn_decoder1, max_length=4000)
         print(f'{i} loss {loss}')
         if i % 50 == 0:
             torch.save(encoder1.state_dict(), '../models/encoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
-            torch.save(decoder1.state_dict(), '../models/decoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
+            #torch.save(decoder1.state_dict(), '../models/decoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
+            torch.save(attn_decoder1.state_dict(), '../models/decoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
 
