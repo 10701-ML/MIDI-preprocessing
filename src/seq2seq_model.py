@@ -46,7 +46,7 @@ class AttnDecoderRNN(nn.Module):
         self.embedding = embedding
         self.ref_embedding = nn.Embedding(token_size, hidden_size)
         self.attn = nn.Linear(self.hidden_size * 2, self.max_length)
-        self.attn_combine = nn.Linear(self.hidden_size * 2, self.hidden_size)
+        self.attn_combine = nn.Linear(42, self.hidden_size)
         self.dropout = nn.Dropout(self.dropout_p)
         self.gru = nn.GRU(self.hidden_size, self.hidden_size)
         self.out = nn.Linear(self.hidden_size, token_size)
@@ -65,7 +65,7 @@ class AttnDecoderRNN(nn.Module):
         input = self.embedding(input)  # [1, N, E]
         print("input shape: ", input.shape)
         attn_weights = F.softmax(
-            self.attn(torch.cat((input[0], hidden[0]), 1)), dim=1)
+            self.attn(torch.cat((input[0], hidden[0]), 1)), dim=1).T
 
         print(attn_weights.unsqueeze(0).shape)
         print(encoder_outputs.unsqueeze(0).shape)
@@ -74,7 +74,8 @@ class AttnDecoderRNN(nn.Module):
 
         print("input[0] shape: ", input.shape)
         print("attn_applied shape: ", attn_applied.shape)
-        output = torch.cat((input[0], attn_applied[0]), 1)
+        output = torch.cat((input[0], attn_applied[0]), 0)  #1)
+        print(output.shape)
         output = self.attn_combine(output).unsqueeze(0)
 
         output = F.relu(output)
