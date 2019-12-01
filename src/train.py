@@ -1,5 +1,5 @@
 from seq2seq_model import DecoderRNN, EncoderRNN
-from midi_io_dic_mode import *
+from midi_io import createSeqNetInputs, midiToPianoroll
 from parameters import *
 import torch
 from torch import optim
@@ -70,7 +70,7 @@ def trainIters(train_x, train_y, encoder, decoder, max_length, print_every=1, le
         loss = 0
         # torch.random.
         for i in range(0, input_tensor.size(1), batch_size):
-            loss += train(input_tensor[:, i: i+batch_size], target_tensor[:, i: i+batch_size],
+            loss += train(input_tensor[:, i: i+batch_size, :], target_tensor[:, i: i+batch_size, :],
                           encoder, decoder, encoder_optimizer, decoder_optimizer, criterion, max_length)
 
         print_loss_total += loss
@@ -95,22 +95,12 @@ if __name__ == "__main__":
         encoder1.load_state_dict(torch.load('../models/encoder_baseline_' + str(args.load_epoch) + '_Adam1e-3'))
         decoder1.load_state_dict(torch.load('../models/decoder_baseline_' + str(args.load_epoch) + '_Adam1e-3'))
 
-    get_dictionary_of_chord(root_path, two_hand=True)
-    midi_path = next(findall_endswith('.mid', root_path))
-    piano_roll_data = midiToPianoroll(midi_path, merge=True, velocity=False)
 
+    piano_data = midiToPianoroll(path, debug=True)
+    print("shape of data ", piano_data.shape)
 
-    with open("../output/chord_dictionary/two-hand.json", "r") as f:
-        dictionary = json.load(f)
+    input_datax, input_datay = createSeqNetInputs([piano_data], time_len, output_len)
 
-    dic_data = pianoroll2dicMode(piano_roll_data, dictionary)
-
-    input_datax, input_datay = createSeqNetInputs([piano_roll_data], time_len, output_len, dictionary)
-
-    print(len(input_datax))
-    print(input_datax[0])
-    print(len(input_datay))
-    print(input_datay[0])
     for i in range(1, epoch+1):
         loss = trainIters(input_datax, input_datay, encoder1, decoder1, max_length=4000)
         print(f'{i} loss {loss}')
