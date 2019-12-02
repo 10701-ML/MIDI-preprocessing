@@ -35,15 +35,15 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer,
     input_length = input_tensor.size(0)
     target_length = target_tensor.size(0)
 
-    encoder_outputs = torch.zeros(max_length, encoder.hidden_size, device=device)
+    # encoder_outputs = torch.zeros(max_length, encoder.hidden_size, device=device)
     
-    encoder_output, encoder_hidden = encoder(input_tensor)
+    encoder_outputs, encoder_hidden = encoder(input_tensor)
     '''
     for ei in range(input_length):
         encoder_output, encoder_hidden = encoder(input_tensor[ei])
         encoder_outputs[ei] = encoder_output[0]
     '''
-    encoder_outputs = encoder_output[0]
+    # encoder_outputs = encoder_output[0, :, :]
     
     decoder_input = torch.zeros((1, target_tensor.size(1)), dtype=torch.long, device=device)
     decoder_hidden = encoder_hidden
@@ -117,7 +117,7 @@ if __name__ == "__main__":
 
     encoder1 = EncoderRNN(token_size, emb_size, hidden_dim).to(device)
     #decoder1 = DecoderRNN(token_size, emb_size, hidden_dim, encoder1.embedding).to(device)
-    attn_decoder1 = AttnDecoderRNN(token_size, emb_size, hidden_dim, encoder1.embedding, dropout_p=0.1).to(device)
+    attn_decoder1 = AttnDecoderRNN(token_size, emb_size, hidden_dim, encoder1.embedding, dropout_p=0.1, max_length=time_len).to(device)
     '''
     if args.load_epoch != 0:
         encoder1.load_state_dict(torch.load('../models/encoder_dict_' + str(args.load_epoch) + '_Adam1e-3'))
