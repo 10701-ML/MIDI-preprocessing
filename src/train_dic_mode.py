@@ -95,10 +95,4 @@ if __name__ == "__main__":
         loss = trainIters(input_datax, input_datay, model, max_length=4000)
         print(f'{i} loss {loss}')
         if i % 50 == 0:
-<<<<<<< .merge_file_njK24p
-            torch.save(model.state_dict(), '../models/deepjazz_baseline_' + str(i + args.load_epoch) + '_Adam1e-3')
-
-=======
             torch.save(model.state_dict(), '../models/dictRNN_' + str(i + args.load_epoch) + '_Adam1e-3')
-            
->>>>>>> .merge_file_jElj1D
