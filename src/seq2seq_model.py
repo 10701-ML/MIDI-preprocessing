@@ -81,6 +81,7 @@ class AttnDecoderRNN(nn.Module):
 
         output = F.relu(output)
         output, hidden = self.gru(output, hidden)
+        output = self.out(output)
         return output, hidden, attn_weights
 
 

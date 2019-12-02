@@ -116,7 +116,6 @@ if __name__ == "__main__":
     epoch = args.epoch_number
 
     encoder1 = EncoderRNN(token_size, emb_size, hidden_dim).to(device)
-    #decoder1 = DecoderRNN(token_size, emb_size, hidden_dim, encoder1.embedding).to(device)
     attn_decoder1 = AttnDecoderRNN(token_size, emb_size, hidden_dim, encoder1.embedding, dropout_p=0.1, max_length=time_len).to(device)
     '''
     if args.load_epoch != 0:
