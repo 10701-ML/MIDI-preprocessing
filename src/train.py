@@ -28,6 +28,7 @@ def timeSince(since, percent):
 def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer,
           decoder_optimizer, criterion, max_length):
     encoder_hidden = torch.zeros(1, 1, encoder.hidden_size, device=device)
+    #print(input_tensor.shape)
 
     encoder_optimizer.zero_grad()
     decoder_optimizer.zero_grad()
