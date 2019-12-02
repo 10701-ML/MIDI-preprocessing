@@ -40,6 +40,7 @@ class Sequence(nn.Module):
         self.lstm2 = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size)
         self.linear = nn.Linear(hidden_size, token_size)
         self.drop1 = nn.Dropout(p = 0.2)
+        self.softmax = nn.Softmax()
 
     def forward(self, input, hiddens=None):
         x = self.Emb(input)
@@ -53,4 +54,5 @@ class Sequence(nn.Module):
             # x = self.drop1(x)
             x, hidden_2 = self.lstm2(x)
         x = self.linear(x)
+        # x = self.softmax(self.linear(x))
         return x, [hidden_1, hidden_2]

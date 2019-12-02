@@ -97,9 +97,13 @@ def combine_left_and_right(left, right, left_corpus, right_corpus):
     return final_chord
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='train a MIDI_NET')
+    parser.add_argument('-e', '--epoch_number', type=int, help='the epoch number you want to train')
+    parser.add_argument('-l', '--load_epoch', type=int, help='the model epoch need to be loaded', default=0)
+    args = parser.parse_args()
+
     midi_path = "../data/chpn_op7_1.mid"
     model_name = "left_right"
-    load_epoch = 1000
     origin_num_bars = 4
     target_num_bars = 20
 
@@ -115,13 +119,15 @@ if __name__ == "__main__":
     right_track, left_track = pianoroll_data[:, :, 0], pianoroll_data[:, :, 1]
     input_datax, input_datay = createSeqNetInputs([right_track], time_len , 1, right_corpus)
     model = Sequence(right_token_size, emb_size, hidden_dim)
+    if args.load_epoch != 0:
+        model.load_state_dict(torch.load(f'../models/{model_name}_' + str(args.load_epoch) + '_Adam1e-3'))
+
     print("shape of data ", pianoroll_data.shape)
-    epoch = 500
-    for i in range(1, epoch+1):
+    for i in range(1, args.epoch_number+1):
         loss = trainIters(input_datax, input_datay, model, token_size=right_token_size)
         print(f'{i} loss {loss}')
-        if i % 50 == 0:
-            torch.save(model.state_dict(), f'../models/{model_name}_' + str(i + load_epoch) + '_Adam1e-3')
+        if i % 10 == 0:
+            torch.save(model.state_dict(), f'../models/{model_name}_' + str(i + args.load_epoch) + '_Adam1e-3')
 
     right_track_input_of_gen = pianoroll2dicMode(right_track, right_corpus)
     input_datax = torch.tensor(right_track_input_of_gen[:origin_length], dtype=torch.long).unsqueeze(1)
