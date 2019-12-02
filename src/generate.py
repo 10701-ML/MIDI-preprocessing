@@ -1,5 +1,4 @@
-from seq2seq_model import Sequence
-from midi_io_dic_mode import *
+from seq2seq_model import DecoderRNN, EncoderRNN
 from parameters import *
 import torch
 from torch import optim
@@ -10,70 +9,28 @@ import argparse
 import numpy as np
 
 device = torch.device("cpu")
-"""
-input_tensor: shape (Time_len, 1)
-"""
-def generate(input_tensor, model, target_length):
-    model.eval()
-    print(input_tensor.shape)
-    output, _ = model(input_tensor)  # output: (T, 1, D)
-    prediction = torch.argmax(output[-1, :, :], dim=1)
-    print(output[-1, :, 0:10])
-    generate_seq = []
-    input_ = prediction.unsqueeze(0).detach()
-    input = torch.cat([input_tensor, input_])
-    generate_seq.append(prediction)
 
-    for di in range(target_length - 1):
-        output, _ = model(input)
-        print(output[-1, :, 0:10])
-        prediction = torch.argmax(output[-1, :, :], dim=1)
-        input_ = prediction.unsqueeze(0).detach()  # detach from history as input
-        input = torch.cat([input_tensor, input_])
-        generate_seq.append(prediction)
+def generate(input_tensor, encoder, decoder, target_length):
+    encoder.eval()
+    decoder.eval()
+
+    encoder_output, encoder_hidden = encoder(input_tensor)
+    decoder_input = torch.zeros((1, input_tensor.size(1), input_tensor.size(2)), dtype=torch.float, device=device)
+    decoder_hidden = encoder_hidden
+
+    ones = torch.ones(input_tensor.size(1), input_tensor.size(2))
+    zeros = torch.zeros(input_tensor.size(1), input_tensor.size(2))
+
+    generate_seq = []
+
+    for di in range(target_length):
+        decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
+        decoder_input = torch.where(decoder_output[-1, :, :] > 0.5, ones, zeros)
+        decoder_input = decoder_input.unsqueeze(0).detach()  # detach from history as input
+        generate_seq.append(decoder_input)
 
     generate_seq = torch.cat(generate_seq, dim=0)
-    print(generate_seq)
-    output = torch.cat([input_tensor, generate_seq.unsqueeze(1)], dim=0).squeeze(1)
-    return output, generate_seq
+    output = torch.cat([input_tensor, generate_seq], dim=0)
+    print(generate_seq[0])
+    return output
 
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='generate a MIDI')
-    parser.add_argument('-t', '--target_length', type=int, help='the target length')
-    parser.add_argument('-o', '--origin_length', type=int, help='the origin length')
-    parser.add_argument('-l', '--load_epoch', type=int, help='the model epoch need to be loaded', default=0)
-    args = parser.parse_args()
-
-    if args.origin_length <= 0:
-        print("invalid origin length")
-        exit()
-
-    if args.target_length <= 0:
-        print("invalid target length")
-        exit()
-
-    if args.load_epoch <= 0:
-        print("invalid load epoch")
-        exit()
-
-    corpus, token_size = load_corpus("../output/chord_dictionary/two-hand.json")  # get the corpus of the chords
-    midi_path = next(findall_endswith('.mid', root_path))
-    pianoroll_data = midiToPianoroll(midi_path, merge=True, velocity=True)
-
-    piano_data = pianoroll2dicMode(pianoroll_data, corpus)
-
-    input_datax = torch.tensor(piano_data[:args.origin_length], dtype=torch.long).unsqueeze(1)
-
-    model = Sequence(token_size, emb_size, hidden_dim)
-
-    model.load_state_dict(torch.load('../models/dictRNN_' + str(args.load_epoch) + '_Adam1e-3'))
-
-    output, generate_seq = generate(input_datax, model, args.target_length)
-    output = [x.item() for x in output]
-    generate_seq = [x.item() for x in generate_seq]
-    pianorollToMidi(output, name="test_midi", dir="../output/", velocity=False,  # True if the input array contains velocity info (means not binary but continuous)
-                    dictionary_dict = corpus) # True if the using the dic mode)
-    pianorollToMidi(generate_seq, name="test_midi_gen", dir="../output/", velocity=False,
-                    # True if the input array contains velocity info (means not binary but continuous)
-                    dictionary_dict=corpus)  # True if the using the dic mode)
