@@ -10,21 +10,26 @@ import argparse
 import numpy as np
 
 device = torch.device("cpu")
-
+"""
+input_tensor: shape (Time_len, 1)
+"""
 def generate(input_tensor, model, target_length):
     model.eval()
-
     print(input_tensor.shape)
-    output, hidden = model(input_tensor)
+    output, _ = model(input_tensor)  # output: (T, 1, D)
     prediction = torch.argmax(output[-1, :, :], dim=1)
+    print(output[-1, :, 0:10])
     generate_seq = []
-    input = prediction.unsqueeze(0).detach()
+    input_ = prediction.unsqueeze(0).detach()
+    input = torch.cat([input_tensor, input_])
     generate_seq.append(prediction)
 
     for di in range(target_length - 1):
-        output, hidden = model(input, hidden)
+        output, _ = model(input)
+        print(output[-1, :, 0:10])
         prediction = torch.argmax(output[-1, :, :], dim=1)
-        input = prediction.unsqueeze(0).detach()  # detach from history as input
+        input_ = prediction.unsqueeze(0).detach()  # detach from history as input
+        input = torch.cat([input_tensor, input_])
         generate_seq.append(prediction)
 
     generate_seq = torch.cat(generate_seq, dim=0)
