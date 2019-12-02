@@ -53,9 +53,9 @@ def trainIters(train_x, train_y, model, token_size, learning_rate=1e-3, batch_si
                 target = target_tensor_batch[di, :]
                 output = output.reshape(-1, token_size)
                 loss += criterion(output, target)
-
                 if torch.rand(1)[0] > threshold:
-                    input = input_tensor_batch[di].unsqueeze(0)
+                    input = target_tensor_batch[di].unsqueeze(0)
+
                 else:
                     input = torch.argmax(output, dim=1)
                     input = input.unsqueeze(0).detach()
