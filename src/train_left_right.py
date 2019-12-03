@@ -1,18 +1,8 @@
-from seq2seq_model import Sequence
-from midi_io_dic_mode import *
-from parameters import *
-from generate import *
 import numpy as np
 import torch
-from torch import optim
-from torch import nn
-from keras.layers import Embedding, Dense, Softmax
-from keras.models import Sequential
-from keras.utils import plot_model
-import time
-import math
-import argparse
-import json
+from generate import *
+from midi_io_dic_mode import *
+from parameters import *
 
 device = torch.device("cpu")
 from seq2seq_model import DecoderRNN, EncoderRNN
@@ -21,8 +11,6 @@ from parameters import *
 import torch
 from torch import optim
 from torch import nn
-import time
-import math
 import argparse
 
 device = torch.device("cpu")
@@ -33,14 +21,12 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer,
     decoder_optimizer.zero_grad()
 
     target_length = target_tensor.size(0)
-    encoder_output, encoder_hidden = encoder(input_tensor)  # (time_len, batch_size)
+    encoder_output, encoder_hidden = encoder(input_tensor)  # (time_len, batch_size, D)
     decoder_input = torch.zeros((1, target_tensor.size(1), target_tensor.size(2)), dtype=torch.float, device=device)
     decoder_hidden = encoder_hidden
     ones = torch.ones(input_tensor.size(1), input_tensor.size(2))
     zeros = torch.zeros(input_tensor.size(1), input_tensor.size(2))
-
     loss = 0
-
     # Teacher forcing: Feed the target as the next input
     for di in range(target_length):
         decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden) # decoder_output：(1, B, D)
@@ -55,7 +41,6 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer,
     loss.backward()
     encoder_optimizer.step()
     decoder_optimizer.step()
-
     return loss.item() / target_length
 
 
@@ -64,12 +49,13 @@ def trainIters(train_x, train_y, encoder, decoder, learning_rate=1e-3, batch_siz
 
     encoder_optimizer = optim.Adam(encoder.parameters(), lr=learning_rate)
     decoder_optimizer = optim.Adam(decoder.parameters(), lr=learning_rate)
-    training_x = torch.tensor(train_x, dtype=torch.float)
-    training_y = torch.tensor(train_y, dtype=torch.float)
+
     criterion = nn.BCELoss(reduction="sum")
-    for iter in range(1, training_x.size(0)+1): # iterate each sone
-        input_tensor = training_x[iter-1]
-        target_tensor = training_y[iter-1]
+    for iter in range(1, len(train_x)+1): # iterate each sone
+        input_tensor = train_x[iter-1]
+        target_tensor = train_y[iter-1]
+        input_tensor = torch.tensor(input_tensor, dtype=torch.float)
+        target_tensor = torch.tensor(target_tensor, dtype=torch.float)
         loss = 0
         for i in range(0, input_tensor.size(1), batch_size):
             loss += train(input_tensor[:, i: i+batch_size], target_tensor[:, i: i+batch_size],
@@ -80,90 +66,124 @@ def trainIters(train_x, train_y, encoder, decoder, learning_rate=1e-3, batch_siz
     return print_loss_total
 
 
+def train_left(x, y, path=None):
+    from keras.models import Sequential
+    from keras.layers import Dense
+    from keras.optimizers import Adam
+    from keras.models import load_model
 
+    if path is None:
+        path = "../models/keras_mlp.h5"
+        model = Sequential()
+        model.add(Dense(256))
+        model.add(Dense(128, activation="sigmoid"))
+        adam = Adam(learning_rate=1e-3)
+        model.compile(loss="binary_crossentropy", optimizer=adam, metrics=['mae'])
+        model.fit(x, y, epochs=25, batch_size=32, verbose=2)
+        model.save(path)
+    else:
+        model = load_model(path)
 
-def train_left(x, y, y_token_size=None, x_token_size=None, embed_size=None):
-    # one_hot = lambda x, token_size: np.eye(token_size)[x]
-    # x = one_hot(x, x_token_size)
-    # y = one_hot(y, y_token_size)
-    # model = Sequential()
-    # # model.add(Embedding(x_token_size, embed_size))
-    # model.add(Dense(200, activation='sigmoid'))
-    # model.add(Dense(y_token_size, activation='softmax'))
-    # # plot_model(model)
-    # model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=["acc"])
-    # model.fit(x, y, epochs=50, batch_size=64)
-    mat = np.zeros((x_token_size, y_token_size))
-    for i in range(len(x)):
-        mat[x[i], y[i]] += 1
+    return model
 
-    return mat
+def get_left(model, x):
+    pred = model.predict(x)
+    pred = np.where(pred>0.5, 1, 0)
+    return pred
 
-def get_left(mat, x):
-    pred_y = []
-    for i in x:
-        pred_y.append(np.argmax(mat[i]))
-    return pred_y
-
-def combine_left_and_right(left, right, left_corpus, right_corpus):
+def combine_left_and_right(left, right):
     assert len(left) == len(right)
-    left = dic2pianoroll(left, left_corpus)
-    right = dic2pianoroll(right, right_corpus)
     final_chord = (left + right)
     return final_chord
+
+def train_mul(args):
+    model_name = "left_right_mul"
+    origin_num_bars = 4
+    target_num_bars = 20
+    target_length = STAMPS_PER_BAR * target_num_bars
+    origin_length = origin_num_bars * STAMPS_PER_BAR
+    learning_rate = args.learning_rate
+    right_tracks = []
+    left_tracks = []
+    for midi_path in findall_endswith(".mid", "../data/"):
+        pianoroll_data = midiToPianoroll(midi_path, merge=False, velocity=False)  # (n_time_stamp, 128, num_track)
+        right_track, left_track = pianoroll_data[:, :, 0], pianoroll_data[:, :, 1]
+        right_tracks.append(right_track)
+        left_tracks.append(left_track)
+
+    input_datax, input_datay = createSeqNetInputs(right_tracks, time_len, output_len)
+    encoder1 = EncoderRNN(input_dim, hidden_dim).to(device)
+    decoder1 = DecoderRNN(input_dim, hidden_dim).to(device)
+
+    if args.load_epoch != 0:
+        encoder1.load_state_dict(torch.load(f'../models/encoder_{model_name}_' + str(args.load_epoch) + f'_Adam_{learning_rate}'))
+        decoder1.load_state_dict(torch.load(f'../models/decoder_{model_name}_' + str(args.load_epoch) + f'_Adam_{learning_rate}'))
+
+    print("shape of data ", pianoroll_data.shape)
+    for i in range(1, args.epoch_number + 1):
+        loss = trainIters(input_datax, input_datay, encoder1, decoder1)
+        print(f'{i} loss {loss}')
+        if i % 10 == 0:
+            torch.save(encoder1.state_dict(), f'../models/encoder_{model_name}_' + str(i + args.load_epoch) + f'_Adam_{learning_rate}')
+            torch.save(decoder1.state_dict(), f'../models/decoder_{model_name}_' + str(i + args.load_epoch) + f'_Adam_{learning_rate}')
+
+    # generating
+    input_datax = torch.tensor(right_tracks[0][:origin_length], dtype=torch.float).unsqueeze(1)
+
+    output, generate_seq = generate(input_datax, encoder1, decoder1, target_length)
+    generate_seq = torch.squeeze(generate_seq).numpy()
+    y = np.vstack(left_tracks)
+    x = np.vstack(right_tracks)
+    model = train_left(x, y)
+    pred_left = get_left(model, generate_seq)
+    chord = combine_left_and_right(pred_left, generate_seq)
+    pianorollToMidi(chord, name="right-left-test", velocity=False)
+
+def train_one(args):
+    midi_path = "../data/chp_op18.mid"
+    model_name = "left_right"
+    origin_num_bars = 4
+    target_num_bars = 20
+    learning_rate = args.learning_rate
+    target_length = STAMPS_PER_BAR * target_num_bars
+    origin_length = origin_num_bars * STAMPS_PER_BAR
+
+    pianoroll_data = midiToPianoroll(midi_path, merge=False, velocity=False) # (n_time_stamp, 128, num_track)
+    right_track, left_track = pianoroll_data[:, :, 0], pianoroll_data[:, :, 1]
+    input_datax, input_datay = createSeqNetInputs([right_track], time_len , output_len)
+
+    encoder1 = EncoderRNN(input_dim, hidden_dim).to(device)
+    decoder1 = DecoderRNN(input_dim, hidden_dim).to(device)
+    if args.load_epoch != 0:
+        encoder1.load_state_dict(torch.load(f'../models/encoder_{model_name}_' + str(args.load_epoch) + f"_Adam_{learning_rate}"))
+        decoder1.load_state_dict(torch.load(f'../models/decoder_{model_name}_' + str(args.load_epoch) + f'_Adam_{learning_rate}'))
+
+    print("shape of data ", pianoroll_data.shape)
+    for i in range(1, args.epoch_number+1):
+        loss = trainIters(input_datax, input_datay, encoder1, decoder1, learning_rate=learning_rate)
+        print(f'{i} loss {loss}')
+        if i % 50 == 0:
+            torch.save(encoder1.state_dict(), f'../models/encoder_{model_name}_' + str(i + args.load_epoch) + f'_Adam_{learning_rate}')
+            torch.save(decoder1.state_dict(), f'../models/decoder_{model_name}_' + str(i + args.load_epoch) + f'_Adam_{learning_rate}')
+
+    # generating
+    input_datax = torch.tensor(right_track[200:200 + origin_length], dtype=torch.float).unsqueeze(1)
+    output, generate_seq = generate(input_datax, encoder1, decoder1, target_length)
+    generate_seq = torch.squeeze(generate_seq).numpy()
+    y = left_track
+    x = right_track
+    model = train_left(x, y, path="../models/keras_mlp.h5")
+    pred_left = get_left(model, generate_seq)
+    chord = combine_left_and_right(pred_left, generate_seq)
+    pianorollToMidi(chord, name="right-left-test", velocity=False)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='train a MIDI_NET')
     parser.add_argument('-e', '--epoch_number', type=int, help='the epoch number you want to train')
     parser.add_argument('-l', '--load_epoch', type=int, help='the model epoch need to be loaded', default=0)
+    parser.add_argument('-lr', '--learning_rate', type=float, help='learning rate', default=0.001)
     args = parser.parse_args()
-
-    midi_path = "../data/chpn_op7_1.mid"
-    model_name = "left_right"
-    origin_num_bars = 4
-    target_num_bars = 20
-
-    target_length = STAMPS_PER_BAR * target_num_bars
-    origin_length = origin_num_bars * STAMPS_PER_BAR
-
-    # step 1 : get the dictionary
-    # get_dictionary_of_chord(root_path, two_hand=False)
-    right_corpus, right_token_size = load_corpus("../output/chord_dictionary/right-hand.json")
-
-    # step 2 : generated the right-hand music
-    pianoroll_data = midiToPianoroll(midi_path, merge=False, velocity=False) # (n_time_stamp, 128, num_track)
-    right_track, left_track = pianoroll_data[:, :, 0], pianoroll_data[:, :, 1]
-    input_datax, input_datay = createSeqNetInputs([right_track], time_len , 1)
-
-    encoder1 = EncoderRNN(input_dim, hidden_dim).to(device)
-    decoder1 = DecoderRNN(input_dim, hidden_dim).to(device)
-    if args.load_epoch != 0:
-        encoder1.load_state_dict(torch.load('../models/encoder_baseline_' + str(args.load_epoch) + '_Adam1e-3'))
-        decoder1.load_state_dict(torch.load('../models/decoder_baseline_' + str(args.load_epoch) + '_Adam1e-3'))
-
-    print("shape of data ", pianoroll_data.shape)
-    for i in range(1, args.epoch_number+1):
-        loss = trainIters(input_datax, input_datay, encoder1, decoder1)
-        print(f'{i} loss {loss}')
-        if i % 10 == 0:
-            torch.save(encoder1.state_dict(), '../models/encoder_baseline_' + str(i + args.load_epoch) + '_Adam1e-3')
-            torch.save(decoder1.state_dict(), '../models/decoder_baseline_' + str(i + args.load_epoch) + '_Adam1e-3')
-
-    # generating
-    input_datax = torch.tensor(right_track[:origin_length], dtype=torch.long).unsqueeze(1)
-
-    output, generate_seq = generate(input_datax, encoder1, decoder1, target_length)
-    output = [x.item() for x in output]  # real input + generated output
-    generate_seq = [x.item() for x in generate_seq]  # generated output
-
-    # step 3 : predict the left-hand music
-    left_corpus, left_token_size = load_corpus("../output/chord_dictionary/left-hand.json")
-    y = pianoroll2dicMode(left_track, left_corpus)
-    x = right_track_input_of_gen
-    mat = train_left(x, y, x_token_size=right_token_size, y_token_size=left_token_size, embed_size=100)
-    pred_left = get_left(mat, generate_seq)
-    chord = combine_left_and_right(pred_left, generate_seq, left_corpus, right_corpus)
-    pianorollToMidi(chord, name="right-left-test", velocity=False)
+    train_mul(args)
 
 
 

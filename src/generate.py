@@ -32,5 +32,5 @@ def generate(input_tensor, encoder, decoder, target_length):
     generate_seq = torch.cat(generate_seq, dim=0)
     output = torch.cat([input_tensor, generate_seq], dim=0)
     print(generate_seq[0])
-    return output
+    return output, generate_seq
 
