@@ -33,11 +33,11 @@ def trainIters(train_x, train_y, model, max_length, learning_rate=1e-4, batch_si
 
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     criterion = nn.CrossEntropyLoss()
-    training_x = torch.tensor(train_x, dtype=torch.long).to(device) # (num_of_songs, num_of_samples, time_len)
-    training_y = torch.tensor(train_y, dtype=torch.long).to(device)
-    for iter in range(1, training_x.size(0)+1): # iterate each song
-        input_tensor = training_x[iter-1]
-        target_tensor = training_y[iter-1]
+    for iter in range(1, len(train_x)+1): # iterate each song
+        input_tensor = train_x[iter-1]
+        target_tensor = train_y[iter-1]
+        input_tensor = torch.tensor(input_tensor, dtype=torch.long).to(device)
+        target_tensor = torch.tensor(target_tensor, dtype=torch.long).to(device)
         loss = 0
         # torch.random.
 
@@ -78,13 +78,36 @@ def trainIters(train_x, train_y, model, max_length, learning_rate=1e-4, batch_si
         print_loss_total += loss
     return print_loss_total
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='train a MIDI_NET')
-    parser.add_argument('-e', '--epoch_number', type=int, help='the epoch number you want to train')
-    parser.add_argument('-l', '--load_epoch', type=int, help='the model epoch need to be loaded', default=0)
-    args = parser.parse_args()
+def train_mul(args):
+    if args.epoch_number <= 0:
+        print("invalid epoch number")
+        exit()
 
+    epoch = args.epoch_number
+    # get_dictionary_of_chord(root_path, two_hand=True)
+    corpus, token_size = load_corpus("../output/chord_dictionary/two-hand.json") # get the corpus of the chords
+    # print(token_size)
+    model = Sequence(token_size, emb_size, hidden_dim)
+    if args.load_epoch != 0:
+        model.load_state_dict(torch.load('../models/dictRNN_' + str(args.load_epoch) + '_Adam1e-4'))
+        print("loaded")
 
+    root_path = "../data/"
+    pianoroll_datas = []
+    for midi_path in findall_endswith('.mid', root_path):
+        pianoroll_data = midiToPianoroll(midi_path, merge=True, velocity=True)
+        pianoroll_datas.append(pianoroll_data)
+    input_datax, input_datay = createSeqNetInputs(pianoroll_datas, time_len, 1, corpus)
+
+    print("shape of data ", pianoroll_data.shape)
+
+    for i in range(1, epoch+1):
+        loss = trainIters(input_datax, input_datay, model, max_length=4000)
+        print(f'{i} loss {loss}')
+        if i % 10 == 0:
+            torch.save(model.state_dict(), '../models/dictRNN_' + str(i + args.load_epoch) + '_Adam1e-4')
+
+def train_one(args):
     if args.epoch_number <= 0:
         print("invalid epoch number")
         exit()
@@ -94,8 +117,6 @@ if __name__ == "__main__":
     corpus, token_size = load_corpus("../output/chord_dictionary/two-hand.json") # get the corpus of the chords
     # print(token_size)
     model = Sequence(token_size, emb_size, hidden_dim)
-
-
     if args.load_epoch != 0:
         model.load_state_dict(torch.load('../models/dictRNN_' + str(args.load_epoch) + '_Adam1e-4'))
         print("loaded")
@@ -113,4 +134,14 @@ if __name__ == "__main__":
         print(f'{i} loss {loss}')
         if i % 10 == 0:
             torch.save(model.state_dict(), '../models/dictRNN_' + str(i + args.load_epoch) + '_Adam1e-4')
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='train a MIDI_NET')
+    parser.add_argument('-e', '--epoch_number', type=int, help='the epoch number you want to train')
+    parser.add_argument('-l', '--load_epoch', type=int, help='the model epoch need to be loaded', default=0)
+    args = parser.parse_args()
+    train_one(args)
+
+
+
             
