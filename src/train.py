@@ -74,17 +74,16 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer,
 
 
 def trainIters(train_x, train_y, encoder, decoder, max_length, print_every=1, learning_rate=1e-3, batch_size=32):
-    start = time.time()
     print_loss_total = 0  # Reset every print_every
 
     encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate, momentum=0.9)
     decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate, momentum=0.9)
-    training_x = torch.tensor(train_x, dtype=torch.long)
-    training_y = torch.tensor(train_y, dtype=torch.long)
     criterion = nn.CrossEntropyLoss()
-    for iter in range(1, training_x.size(0)+1): # iterate each sone
-        input_tensor = training_x[iter-1]
-        target_tensor = training_y[iter-1]
+    for iter in range(1, len(train_x)+1): # iterate each sone
+        input_tensor = train_x[iter-1]
+        target_tensor = train_y[iter-1]
+        input_tensor = torch.tensor(input_tensor, dtype=torch.long)
+        target_tensor = torch.tensor(target_tensor, dtype=torch.long)
         loss = 0
         # torch.random.
         for i in range(0, input_tensor.size(1), batch_size):
@@ -95,21 +94,14 @@ def trainIters(train_x, train_y, encoder, decoder, max_length, print_every=1, le
 
     return print_loss_total
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='train a MIDI_NET')
-    parser.add_argument('-e', '--epoch_number', type=int, help='the epoch number you want to train')
-    parser.add_argument('-l', '--load_epoch', type=int, help='the model epoch need to be loaded', default=0)
-    args = parser.parse_args()
-
+def train_mul(args):
     get_dictionary_of_chord(root_path, two_hand=True)
-    midi_path = next(findall_endswith('.mid', root_path))
-    piano_roll_data = midiToPianoroll(midi_path, merge=True, velocity=False)
+    piano_roll_datas = []
+    for midi_path in findall_endswith('.mid', root_path):
+        piano_roll_data = midiToPianoroll(midi_path, merge=True, velocity=False, )
+        piano_roll_datas.append(piano_roll_data)
 
-    with open("../output/chord_dictionary/two-hand.json", "r") as f:
-        dictionary = json.load(f)
-
-    dic_data = pianoroll2dicMode(piano_roll_data, dictionary)
-    _, token_size = load_corpus("../output/chord_dictionary/two-hand.json")
+    dictionary, token_size = load_corpus("../output/chord_dictionary/two-hand.json")
 
     if args.epoch_number <= 0:
         print("invalid epoch number")
@@ -117,21 +109,56 @@ if __name__ == "__main__":
     epoch = args.epoch_number
 
     encoder1 = EncoderRNN(token_size, emb_size, hidden_dim).to(device)
-    attn_decoder1 = AttnDecoderRNN(token_size, emb_size, hidden_dim, encoder1.embedding, dropout_p=0.1, max_length=time_len).to(device)
-    
+    attn_decoder1 = AttnDecoderRNN(token_size, emb_size, hidden_dim, encoder1.embedding, dropout_p=0.1,
+                                   max_length=time_len).to(device)
+
     if args.load_epoch != 0:
         encoder1.load_state_dict(torch.load('../models/encoder_dict_' + str(args.load_epoch) + '_Adam1e-4'))
         attn_decoder1.load_state_dict(torch.load('../models/decoder_dict_' + str(args.load_epoch) + '_Adam1e-4'))
-    
 
-    input_datax, input_datay = createSeqNetInputs([piano_roll_data], time_len, output_len, dictionary)
+    input_datax, input_datay = createSeqNetInputs(piano_roll_datas, time_len, output_len, dictionary)
 
-    for i in range(1, epoch+1):
-        #loss = trainIters(input_datax, input_datay, encoder1, decoder1, max_length=4000)
+    for i in range(1, epoch + 1):
+        # loss = trainIters(input_datax, input_datay, encoder1, decoder1, max_length=4000)
         loss = trainIters(input_datax, input_datay, encoder1, attn_decoder1, max_length=4000)
         print(f'{i + args.load_epoch} loss {loss}')
         if i % 50 == 0:
             torch.save(encoder1.state_dict(), '../models/encoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
-            #torch.save(decoder1.state_dict(), '../models/decoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
             torch.save(attn_decoder1.state_dict(), '../models/decoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
+
+def train_one(args):
+    get_dictionary_of_chord(root_path, two_hand=True)
+    midi_path = next(findall_endswith('.mid', root_path))
+    piano_roll_data = midiToPianoroll(midi_path, merge=True, velocity=False)
+    dictionary, token_size = load_corpus("../output/chord_dictionary/two-hand.json")
+
+    if args.epoch_number <= 0:
+        print("invalid epoch number")
+        exit()
+    epoch = args.epoch_number
+
+    encoder1 = EncoderRNN(token_size, emb_size, hidden_dim).to(device)
+    attn_decoder1 = AttnDecoderRNN(token_size, emb_size, hidden_dim, encoder1.embedding, dropout_p=0.1,
+                                   max_length=time_len).to(device)
+
+    if args.load_epoch != 0:
+        encoder1.load_state_dict(torch.load('../models/encoder_dict_' + str(args.load_epoch) + '_Adam1e-4'))
+        attn_decoder1.load_state_dict(torch.load('../models/decoder_dict_' + str(args.load_epoch) + '_Adam1e-4'))
+
+    input_datax, input_datay = createSeqNetInputs([piano_roll_data], time_len, output_len, dictionary)
+
+    for i in range(1, epoch + 1):
+        # loss = trainIters(input_datax, input_datay, encoder1, decoder1, max_length=4000)
+        loss = trainIters(input_datax, input_datay, encoder1, attn_decoder1, max_length=4000)
+        print(f'{i + args.load_epoch} loss {loss}')
+        if i % 50 == 0:
+            torch.save(encoder1.state_dict(), '../models/encoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
+            torch.save(attn_decoder1.state_dict(), '../models/decoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='train a MIDI_NET')
+    parser.add_argument('-e', '--epoch_number', type=int, help='the epoch number you want to train')
+    parser.add_argument('-l', '--load_epoch', type=int, help='the model epoch need to be loaded', default=0)
+    args = parser.parse_args()
+    train_mul(args)
 
