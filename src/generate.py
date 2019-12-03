@@ -63,7 +63,7 @@ if __name__ == "__main__":
 
     model = Sequence(token_size, emb_size, hidden_dim)
 
-    model.load_state_dict(torch.load('../models/dictRNN_' + str(args.load_epoch) + '_Adam1e-3'))
+    model.load_state_dict(torch.load('../models/dictRNN_' + str(args.load_epoch) + '_Adam1e-4'))
 
     output, generate_seq = generate(input_datax, model, args.target_length)
     output = [x.item() for x in output]

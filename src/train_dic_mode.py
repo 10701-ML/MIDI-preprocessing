@@ -8,10 +8,10 @@ import time
 import math
 import argparse
 import json
-
+cuda = torch.cuda.is_available()
 from midi_io_dic_mode import *
 
-device = torch.device("cpu")
+device = torch.device("cuda" if cuda else "cpu")
 
 def asMinutes(s):
     m = math.floor(s / 60)
@@ -27,14 +27,14 @@ def timeSince(since, percent):
     return '%s (- %s)' % (asMinutes(s), asMinutes(rs))
 
 
-def trainIters(train_x, train_y, model, max_length, learning_rate=1e-3, batch_size=32):
-    model.train()
+def trainIters(train_x, train_y, model, max_length, learning_rate=1e-4, batch_size=32):
+    model.train().to(device)
     print_loss_total = 0  # Reset every print_every
 
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     criterion = nn.CrossEntropyLoss()
-    training_x = torch.tensor(train_x, dtype=torch.long) # (num_of_songs, num_of_samples, time_len)
-    training_y = torch.tensor(train_y, dtype=torch.long)
+    training_x = torch.tensor(train_x, dtype=torch.long).to(device) # (num_of_songs, num_of_samples, time_len)
+    training_y = torch.tensor(train_y, dtype=torch.long).to(device)
     for iter in range(1, training_x.size(0)+1): # iterate each song
         input_tensor = training_x[iter-1]
         target_tensor = training_y[iter-1]
@@ -90,14 +90,14 @@ if __name__ == "__main__":
         exit()
     epoch = args.epoch_number
 
-    get_dictionary_of_chord(root_path, two_hand=True)
+    # get_dictionary_of_chord(root_path, two_hand=True)
     corpus, token_size = load_corpus("../output/chord_dictionary/two-hand.json") # get the corpus of the chords
     # print(token_size)
     model = Sequence(token_size, emb_size, hidden_dim)
 
 
     if args.load_epoch != 0:
-        model.load_state_dict(torch.load('../models/dictRNN_' + str(args.load_epoch) + '_Adam1e-3'))
+        model.load_state_dict(torch.load('../models/dictRNN_' + str(args.load_epoch) + '_Adam1e-4'))
         print("loaded")
 
 
@@ -112,5 +112,5 @@ if __name__ == "__main__":
         loss = trainIters(input_datax, input_datay, model, max_length=4000)
         print(f'{i} loss {loss}')
         if i % 10 == 0:
-            torch.save(model.state_dict(), '../models/dictRNN_' + str(i + args.load_epoch) + '_Adam1e-3')
+            torch.save(model.state_dict(), '../models/dictRNN_' + str(i + args.load_epoch) + '_Adam1e-4')
             
