@@ -82,5 +82,5 @@ if __name__ == "__main__":
     output = [i.item() for i in output]
     output_gen = [i.item() for i in output_gen]
 
-    pianorollToMidi(output, "../output/test_attention.mid", velocity=False, dictionary_dict=corpus)
-    pianorollToMidi(output_gen, "../output/test_attention_gen.mid", velocity=False, dictionary_dict=corpus)
+    pianorollToMidi(output, "../output/test_attention_" + str(args.load_epoch) + ".mid", velocity=False, dictionary_dict=corpus)
+    pianorollToMidi(output_gen, "../output/test_attention_gen_.mid" + str(args.load_epoch) + ".mid", velocity=False, dictionary_dict=corpus)

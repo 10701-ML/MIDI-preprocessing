@@ -118,18 +118,18 @@ if __name__ == "__main__":
 
     encoder1 = EncoderRNN(token_size, emb_size, hidden_dim).to(device)
     attn_decoder1 = AttnDecoderRNN(token_size, emb_size, hidden_dim, encoder1.embedding, dropout_p=0.1, max_length=time_len).to(device)
-    '''
+    
     if args.load_epoch != 0:
-        encoder1.load_state_dict(torch.load('../models/encoder_dict_' + str(args.load_epoch) + '_Adam1e-3'))
-        decoder1.load_state_dict(torch.load('../models/decoder_dict_' + str(args.load_epoch) + '_Adam1e-3'))
-    '''
+        encoder1.load_state_dict(torch.load('../models/encoder_dict_' + str(args.load_epoch) + '_Adam1e-4'))
+        attn_decoder1.load_state_dict(torch.load('../models/decoder_dict_' + str(args.load_epoch) + '_Adam1e-4'))
+    
 
     input_datax, input_datay = createSeqNetInputs([piano_roll_data], time_len, output_len, dictionary)
 
     for i in range(1, epoch+1):
         #loss = trainIters(input_datax, input_datay, encoder1, decoder1, max_length=4000)
         loss = trainIters(input_datax, input_datay, encoder1, attn_decoder1, max_length=4000)
-        print(f'{i} loss {loss}')
+        print(f'{i + args.load_epoch} loss {loss}')
         if i % 50 == 0:
             torch.save(encoder1.state_dict(), '../models/encoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
             #torch.save(decoder1.state_dict(), '../models/decoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
