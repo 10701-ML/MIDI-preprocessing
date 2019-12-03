@@ -35,22 +35,45 @@ def trainIters(train_x, train_y, model, max_length, learning_rate=1e-3, batch_si
     criterion = nn.CrossEntropyLoss()
     training_x = torch.tensor(train_x, dtype=torch.long) # (num_of_songs, num_of_samples, time_len)
     training_y = torch.tensor(train_y, dtype=torch.long)
-    for iter in range(1, training_x.size(0)+1): # iterate each sone
-        optimizer.zero_grad()
+    for iter in range(1, training_x.size(0)+1): # iterate each song
         input_tensor = training_x[iter-1]
         target_tensor = training_y[iter-1]
         loss = 0
         # torch.random.
+
         for i in range(0, input_tensor.size(1), batch_size):
-            input_tensor_batch = input_tensor[:, i : i+batch_size] #(batch_size, time_len)
+            model.zero_grad()
+            input_tensor_batch = input_tensor[:, i : i+batch_size] #(time_len, batch)
             target_tensor_batch = target_tensor[:, i: i+batch_size]
-            output, _ = model(input_tensor_batch)
-            output = output.reshape(-1, token_size)
-            target_tensor_batch = target_tensor_batch.reshape(-1)
-            loss += criterion(output, target_tensor_batch)
-        
-        loss.backward()
-        optimizer.step()
+
+            #print(input_tensor_batch.shape)
+            #print(target_tensor_batch.shape)
+            output, hiddens = model(input_tensor_batch[0].unsqueeze(0), None)
+            #print("output shape: ", output.shape)
+            #print("batch: ", target_tensor_batch[0].shape)
+            loss += criterion(output[-1], target_tensor_batch[0])
+
+            #print("output shape: ", output.shape)
+            #print("batch: ", target_tensor_batch[0].shape)
+
+            if torch.rand(1)[0] > threshold:
+                next_input = target_tensor_batch[0].unsqueeze(0)
+            else:
+                next_input = torch.argmax(output[-1], dim=1).unsqueeze(0).detach()  # detach from history as input
+
+            hiddens = None
+            for j in range(input_tensor_batch.size(0) - 1):
+                output, hiddens = model(next_input, hiddens)
+                loss += criterion(output[-1], target_tensor_batch[j + 1])
+
+                #print("out shape:", output.shape)
+                if torch.rand(1)[0] > threshold:
+                    next_input = target_tensor_batch[j + 1].unsqueeze(0)
+                else:
+                    next_input = torch.argmax(output[-1], dim=1).unsqueeze(0).detach()  # detach from history as input
+
+            loss.backward(retain_graph=True)
+            optimizer.step()
         
         print_loss_total += loss
     return print_loss_total
@@ -69,20 +92,25 @@ if __name__ == "__main__":
 
     get_dictionary_of_chord(root_path, two_hand=True)
     corpus, token_size = load_corpus("../output/chord_dictionary/two-hand.json") # get the corpus of the chords
+    # print(token_size)
     model = Sequence(token_size, emb_size, hidden_dim)
+
+
     if args.load_epoch != 0:
         model.load_state_dict(torch.load('../models/dictRNN_' + str(args.load_epoch) + '_Adam1e-3'))
+        print("loaded")
+
 
     root_path = "../data/"
     midi_path = next(findall_endswith('.mid', root_path))
     pianoroll_data = midiToPianoroll(midi_path, merge=True, velocity=True)
-    input_datax, input_datay = createSeqNetInputs([pianoroll_data], 200, 200, corpus)
+    input_datax, input_datay = createSeqNetInputs([pianoroll_data], time_len, 1, corpus)
 
     print("shape of data ", pianoroll_data.shape)
 
     for i in range(1, epoch+1):
         loss = trainIters(input_datax, input_datay, model, max_length=4000)
         print(f'{i} loss {loss}')
-        if i % 50 == 0:
+        if i % 10 == 0:
             torch.save(model.state_dict(), '../models/dictRNN_' + str(i + args.load_epoch) + '_Adam1e-3')
             
