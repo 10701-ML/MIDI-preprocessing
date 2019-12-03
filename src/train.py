@@ -55,7 +55,7 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer,
     return loss.item() / target_length
 
 
-def trainIters(train_x, train_y, encoder, decoder, max_length, print_every=1, learning_rate=1e-3, batch_size=32):
+def trainIters(train_x, train_y, encoder, decoder, max_length, print_every=1, learning_rate=1e-4, batch_size=32):
     start = time.time()
     print_loss_total = 0  # Reset every print_every
 
@@ -105,7 +105,7 @@ if __name__ == "__main__":
 
     dic_data = pianoroll2dicMode(piano_roll_data, dictionary)
 
-    input_datax, input_datay = createSeqNetInputs([piano_roll_data], time_len, output_len, dictionary)
+    input_datax, input_datay = createSeqNetInputs([piano_roll_data], time_len, 1, dictionary)
 
     print(len(input_datax))
     print(input_datax[0])
