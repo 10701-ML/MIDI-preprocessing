@@ -113,8 +113,8 @@ def train_mul(args):
                                    max_length=time_len).to(device)
 
     if args.load_epoch != 0:
-        encoder1.load_state_dict(torch.load('../models/encoder_dict_' + str(args.load_epoch) + '_Adam1e-4'))
-        attn_decoder1.load_state_dict(torch.load('../models/decoder_dict_' + str(args.load_epoch) + '_Adam1e-4'))
+        encoder1.load_state_dict(torch.load('../models/mul/encoder_dict_' + str(args.load_epoch) + '_Adam1e-3'))
+        attn_decoder1.load_state_dict(torch.load('../models/mul/decoder_dict_' + str(args.load_epoch) + '_Adam1e-3'))
 
     input_datax, input_datay = createSeqNetInputs(piano_roll_datas, time_len, output_len, dictionary)
 
@@ -123,8 +123,8 @@ def train_mul(args):
         loss = trainIters(input_datax, input_datay, encoder1, attn_decoder1, max_length=4000)
         print(f'{i + args.load_epoch} loss {loss}')
         if i % 50 == 0:
-            torch.save(encoder1.state_dict(), '../models/encoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
-            torch.save(attn_decoder1.state_dict(), '../models/decoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
+            torch.save(encoder1.state_dict(), '../models/mul/encoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
+            torch.save(attn_decoder1.state_dict(), '../models/mul/decoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
 
 def train_one(args):
     get_dictionary_of_chord(root_path, two_hand=True)
@@ -142,8 +142,8 @@ def train_one(args):
                                    max_length=time_len).to(device)
 
     if args.load_epoch != 0:
-        encoder1.load_state_dict(torch.load('../models/encoder_dict_' + str(args.load_epoch) + '_Adam1e-4'))
-        attn_decoder1.load_state_dict(torch.load('../models/decoder_dict_' + str(args.load_epoch) + '_Adam1e-4'))
+        encoder1.load_state_dict(torch.load('../models/encoder_dict_' + str(args.load_epoch) + '_Adam1e-3'))
+        attn_decoder1.load_state_dict(torch.load('../models/decoder_dict_' + str(args.load_epoch) + '_Adam1e-3'))
 
     input_datax, input_datay = createSeqNetInputs([piano_roll_data], time_len, output_len, dictionary)
 

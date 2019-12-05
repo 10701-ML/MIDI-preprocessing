@@ -61,7 +61,15 @@ if __name__ == "__main__":
         exit()
 
     corpus, token_size = load_corpus("../output/chord_dictionary/two-hand.json")
-    midi_path = next(findall_endswith('.mid', root_path))
+    '''
+    generator = findall_endswith('.mid', root_path)
+    print(next(generator))
+    print(next(generator))
+    input_music = next(generator)
+    print(input_music)
+    midi_path = input_music
+    #midi_path = next(findall_endswith('.mid', root_path))
+    '''
     piano_data = midiToPianoroll(path, merge=True, velocity=True)
     dic_data = pianoroll2dicMode(piano_data, corpus)
     #pianorollToMidi(dic_data, "../output/test_attention_origin.mid", velocity=False, dictionary_dict=corpus)
@@ -75,12 +83,12 @@ if __name__ == "__main__":
     encoder1 = EncoderRNN(token_size, emb_size, hidden_dim).to(device)
     attn_decoder1 = AttnDecoderRNN(token_size, emb_size, hidden_dim, encoder1.embedding, dropout_p=0.1, max_length=args.origin_length).to(device)
 
-    encoder1.load_state_dict(torch.load('../models/encoder_dict_' + str(args.load_epoch) + '_Adam1e-3'))
-    attn_decoder1.load_state_dict(torch.load('../models/decoder_dict_' + str(args.load_epoch) + '_Adam1e-3'))
+    encoder1.load_state_dict(torch.load('../models/mul/encoder_dict_' + str(args.load_epoch) + '_Adam1e-3'))
+    attn_decoder1.load_state_dict(torch.load('../models/mul/decoder_dict_' + str(args.load_epoch) + '_Adam1e-3'))
 
     output, output_gen = generate(input_datax, encoder1, attn_decoder1, args.target_length)
     output = [i.item() for i in output]
     output_gen = [i.item() for i in output_gen]
 
-    pianorollToMidi(output, "../output/test_attention_" + str(args.load_epoch) + ".mid", velocity=False, dictionary_dict=corpus)
-    pianorollToMidi(output_gen, "../output/test_attention_gen_.mid" + str(args.load_epoch) + ".mid", velocity=False, dictionary_dict=corpus)
+    pianorollToMidi(output, "../output/mul/test_attention_" + str(args.load_epoch) + ".mid", velocity=False, dictionary_dict=corpus)
+    pianorollToMidi(output_gen, "../output/mul/test_attention_gen_.mid" + str(args.load_epoch) + ".mid", velocity=False, dictionary_dict=corpus)
