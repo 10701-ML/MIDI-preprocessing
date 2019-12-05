@@ -30,7 +30,7 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer,
     loss = 0
     # Teacher forcing: Feed the target as the next input
     for di in range(target_length):
-        decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden, encoder_output) # decoder_output：(1, B, D)
+        decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden) # decoder_output：(1, B, D)
         loss += criterion(decoder_output[0], target_tensor[di])
         if torch.rand(1)[0] > threshold:
             decoder_input = target_tensor[di].unsqueeze(0)
@@ -128,19 +128,22 @@ def train_mul(args):
     origin_length = origin_num_bars * STAMPS_PER_BAR
     right_tracks = []
     left_tracks = []
-    for midi_path in findall_endswith(".mid", "../data/"):
+    for midi_path in findall_endswith(".mid", "../data/train"):
         pianoroll_data = midiToPianoroll(midi_path, merge=False, velocity=False)  # (n_time_stamp, 128, num_track)
-        right_track, left_track = pianoroll_data[:, :, 0], pianoroll_data[:, :, 1]
-        right_tracks.append(right_track)
-        left_tracks.append(left_track)
+        try:
+            right_track, left_track = pianoroll_data[:, :, 0], pianoroll_data[:, :, 1]
+            right_tracks.append(right_track)
+            left_tracks.append(left_track)
+        except:
+            pass
 
     input_datax, input_datay = createSeqNetInputs(right_tracks, time_len, output_len)
     encoder1 = EncoderRNN(input_dim, hidden_dim).to(device)
     decoder1 = DecoderRNN(input_dim, hidden_dim).to(device)
     # decoder1 = AttnDecoderRNN(input_dim, hidden_dim, dropout_p=0.1, max_length=time_len).to(device)
     if args.load_epoch != 0:
-        encoder1.load_state_dict(torch.load(f'../models/mul_encoder_{model_name}_' + str(args.load_epoch) + f'_Adam_7e-05'))
-        decoder1.load_state_dict(torch.load(f'../models/mul_decoder_{model_name}_' + str(args.load_epoch) + f'_Adam_7e-05'))
+        encoder1.load_state_dict(torch.load(f'../models/mul_encoder_{model_name}_' + str(args.load_epoch)))
+        decoder1.load_state_dict(torch.load(f'../models/mul_decoder_{model_name}_' + str(args.load_epoch)))
 
     for i in range(1, args.epoch_number + 1):
         loss = trainIters(input_datax, input_datay, encoder1, decoder1)

@@ -31,7 +31,7 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer,
     loss = 0
     # Teacher forcing: Feed the target as the next input
     for di in range(target_length):
-        decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden) # decoder_output：(1, B, D)
+        decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden, encoder_output) # decoder_output：(1, B, D)
         loss += criterion(decoder_output[0], target_tensor[di])
         if torch.rand(1)[0] > threshold:
             decoder_input = target_tensor[di].unsqueeze(0)
