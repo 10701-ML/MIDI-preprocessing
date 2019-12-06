@@ -94,66 +94,41 @@ def trainIters(train_x, train_y, encoder, decoder, max_length, print_every=1, le
 
     return print_loss_total
 
+
 def train_mul(args):
-    get_dictionary_of_chord(root_path, two_hand=True)
-    piano_roll_datas = []
-    for midi_path in findall_endswith('.mid', root_path):
-        piano_roll_data = midiToPianoroll(midi_path, merge=True, velocity=False, )
-        piano_roll_datas.append(piano_roll_data)
+    model_name = "dict_atten_left_right"
+    root = "../data/naive"
+    get_dictionary_of_chord(root, two_hand=False)
+    left_tracks, right_tracks = [], []
+    for midi_path in findall_endswith('.mid', root):
+        piano_roll_data = midiToPianoroll(midi_path, merge=False, velocity=False, )
+        right_track, left_track = piano_roll_data[:, :, 0], piano_roll_data[:, :, 1]
+        left_tracks.append(left_track)
+        right_tracks.append(right_track)
 
-    dictionary, token_size = load_corpus("../output/chord_dictionary/two-hand.json")
-
+    right_dictionary, token_size = load_corpus("../output/chord_dictionary/right-hand.json")
     if args.epoch_number <= 0:
         print("invalid epoch number")
         exit()
-    epoch = args.epoch_number
 
+    epoch = args.epoch_number
     encoder1 = EncoderRNN(token_size, emb_size, hidden_dim).to(device)
     attn_decoder1 = AttnDecoderRNN(token_size, emb_size, hidden_dim, encoder1.embedding, dropout_p=0.1,
                                    max_length=time_len).to(device)
 
     if args.load_epoch != 0:
-        encoder1.load_state_dict(torch.load('../models/encoder_dict_' + str(args.load_epoch) + '_Adam1e-4'))
-        attn_decoder1.load_state_dict(torch.load('../models/decoder_dict_' + str(args.load_epoch) + '_Adam1e-4'))
+        encoder1.load_state_dict(torch.load(f'../models/{model_name}_' + str(args.load_epoch)))
+        attn_decoder1.load_state_dict(torch.load(f'../models/{model_name}_' + str(args.load_epoch)))
 
-    input_datax, input_datay = createSeqNetInputs(piano_roll_datas, time_len, output_len, dictionary)
+    input_datax, input_datay = createSeqNetInputs(right_tracks, time_len, output_len, right_dictionary)
 
     for i in range(1, epoch + 1):
-        # loss = trainIters(input_datax, input_datay, encoder1, decoder1, max_length=4000)
         loss = trainIters(input_datax, input_datay, encoder1, attn_decoder1, max_length=4000)
         print(f'{i + args.load_epoch} loss {loss}')
         if i % 50 == 0:
-            torch.save(encoder1.state_dict(), '../models/encoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
-            torch.save(attn_decoder1.state_dict(), '../models/decoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
+            torch.save(encoder1.state_dict(), f'../models/{model_name}_' + str(i + args.load_epoch))
+            torch.save(attn_decoder1.state_dict(), f'../models/{model_name}_' + str(i + args.load_epoch))
 
-def train_one(args):
-    get_dictionary_of_chord(root_path, two_hand=True)
-    midi_path = next(findall_endswith('.mid', root_path))
-    piano_roll_data = midiToPianoroll(midi_path, merge=True, velocity=False)
-    dictionary, token_size = load_corpus("../output/chord_dictionary/two-hand.json")
-
-    if args.epoch_number <= 0:
-        print("invalid epoch number")
-        exit()
-    epoch = args.epoch_number
-
-    encoder1 = EncoderRNN(token_size, emb_size, hidden_dim).to(device)
-    attn_decoder1 = AttnDecoderRNN(token_size, emb_size, hidden_dim, encoder1.embedding, dropout_p=0.1,
-                                   max_length=time_len).to(device)
-
-    if args.load_epoch != 0:
-        encoder1.load_state_dict(torch.load('../models/encoder_dict_' + str(args.load_epoch) + '_Adam1e-4'))
-        attn_decoder1.load_state_dict(torch.load('../models/decoder_dict_' + str(args.load_epoch) + '_Adam1e-4'))
-
-    input_datax, input_datay = createSeqNetInputs([piano_roll_data], time_len, output_len, dictionary)
-
-    for i in range(1, epoch + 1):
-        # loss = trainIters(input_datax, input_datay, encoder1, decoder1, max_length=4000)
-        loss = trainIters(input_datax, input_datay, encoder1, attn_decoder1, max_length=4000)
-        print(f'{i + args.load_epoch} loss {loss}')
-        if i % 50 == 0:
-            torch.save(encoder1.state_dict(), '../models/encoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
-            torch.save(attn_decoder1.state_dict(), '../models/decoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='train a MIDI_NET')
