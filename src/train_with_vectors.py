@@ -106,7 +106,7 @@ def predict(root, origin_length, encoder1, decoder1, target_length, model_name, 
 
 
 def train_mul(args):
-    model_name = "dict_atten_left_right"
+    model_name = "dict_atten_left_right_chord2vec"
     root = "../data/naive"
     origin_num_bars = 10
     target_num_bars = 20
@@ -122,15 +122,11 @@ def train_mul(args):
         right_tracks.append(right_track)
 
     right_dictionary, token_size = load_corpus("../output/chord_dictionary/right-hand.json")
-    if args.epoch_number <= 0:
-        print("invalid epoch number")
-        exit()
-
     with open("../output/chord_dictionary/chord2vec.npy", "rb") as f:
         weights_matrix = np.load(f)
     epoch = args.epoch_number
     encoder1 = EncoderRNN(token_size, emb_size, hidden_dim).to(device)
-    encoder1.embedding..load_state_dict({'weight': weights_matrix})
+    encoder1.embedding.load_state_dict({'weight': weights_matrix})
     if non_trainable:
         encoder1.embedding.weight.requires_grad = False
 
@@ -159,7 +155,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='train a MIDI_NET')
     parser.add_argument('-e', '--epoch_number', type=int, help='the epoch number you want to train')
     parser.add_argument('-l', '--load_epoch', type=int, help='the model epoch need to be loaded', default=0)
-    parser.add_argument('-lr', '--lr', type=float, help='learning_rate', default=0)
+    parser.add_argument('-lr', '--lr', type=float, help='learning_rate', default=0.001)
     args = parser.parse_args()
     train_mul(args)
 

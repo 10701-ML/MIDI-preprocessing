@@ -21,7 +21,7 @@ output_len = STAMPS_PER_BAR * input_num_bar
 
 END_TOKEN = 0
 SILENCE_TOEKN = 1
-emb_size = 256 # embedding size
+emb_size = 256  # embedding size
 root_path = "../data/"
 non_trainable = False
 

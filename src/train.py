@@ -95,14 +95,18 @@ def predict(root, origin_length, encoder1, decoder1, target_length, model_name, 
             if (i + origin_length) > len(right_track):
                 break
 
-            input_datax = torch.tensor(right_track[i:i + origin_length]).unsqueeze(1).long()
+            input_datax = torch.tensor(right_track[i:i + time_len]).unsqueeze(1).long()
             output, generate_seq = generate(input_datax, encoder1, decoder1, target_length, random=True, random_interval=12)
             generate_seq = torch.squeeze(generate_seq).numpy()
             pred_left = get_left(model, generate_seq)
+            pred_left = dic2pianoroll(pred_left, corpus_l)
+            generate_seq = dic2pianoroll(generate_seq, corpus_r)
             chord = combine_left_and_right(pred_left, generate_seq)
             pianorollToMidi(chord, name=f"{mid_name}_gen_by_{model_name}-{i}", velocity=False, dir=dir_name)
             generate_seq = torch.squeeze(output).numpy()
             pred_left = get_left(model, generate_seq)
+            pred_left = dic2pianoroll(pred_left, corpus_l)
+            generate_seq = dic2pianoroll(generate_seq, corpus_r)
             chord = combine_left_and_right(pred_left, generate_seq)
             pianorollToMidi(chord, name=f"{mid_name}_{model_name}-{i}", velocity=False, dir=dir_name)
 
