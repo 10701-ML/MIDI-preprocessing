@@ -110,3 +110,4 @@ venv.bak/
 models/
 output/
 log/
+data/

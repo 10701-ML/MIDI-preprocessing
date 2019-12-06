@@ -121,7 +121,7 @@ def train_mul(args):
     for i in range(1, epoch + 1):
         # loss = trainIters(input_datax, input_datay, encoder1, decoder1, max_length=4000)
         loss = trainIters(input_datax, input_datay, encoder1, attn_decoder1, max_length=4000)
-        print(f'{i + args.load_epoch} loss {loss}')
+        print(str(i + args.load_epoch) + ' loss ' + str(loss))
         if i % 50 == 0:
             torch.save(encoder1.state_dict(), '../models/mul/encoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
             torch.save(attn_decoder1.state_dict(), '../models/mul/decoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
@@ -150,7 +150,7 @@ def train_one(args):
     for i in range(1, epoch + 1):
         # loss = trainIters(input_datax, input_datay, encoder1, decoder1, max_length=4000)
         loss = trainIters(input_datax, input_datay, encoder1, attn_decoder1, max_length=4000)
-        print(f'{i + args.load_epoch} loss {loss}')
+        print(str(i + args.load_epoch) + ' loss' + str(loss))
         if i % 50 == 0:
             torch.save(encoder1.state_dict(), '../models/encoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')
             torch.save(attn_decoder1.state_dict(), '../models/decoder_dict_' + str(i + args.load_epoch) + '_Adam1e-3')

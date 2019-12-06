@@ -106,7 +106,7 @@ def get_dictionary_of_chord(root_path,
                 if i not in dic.keys():
                     dic[i] = count
                     count += 1
-        print(f"In total, there are {count} chords")
+        print("In total, there are " + str(count) + " chords")
         with open(os.path.join(dir, "two-hand.json"), "w") as f:
             f.write(json.dumps(dic))
     else:
@@ -128,7 +128,7 @@ def get_dictionary_of_chord(root_path,
                 if i not in dic_right.keys():
                     dic_right[i] = count_right
                     count_right += 1
-        print(f"In total, there are {count_left}/{count_right} left/right-hand chords")
+        print("In total, there are " + str(count_left/count_right) + " left/right-hand chords")
 
         with open(os.path.join(dir, "left-hand.json"), "w") as f:
             f.write(json.dumps(dic_left))
