@@ -1,9 +1,6 @@
 from parameters import *
 import torch
-from torch import optim
-from torch import nn
-import time
-import math
+from midi_io_dic_mode import *
 import argparse
 import numpy as np
 
@@ -94,29 +91,23 @@ if __name__ == "__main__":
     if args.load_epoch <= 0:
         print("invalid load epoch")
         exit()
-
-    corpus, token_size = load_corpus("../output/chord_dictionary/two-hand.json")
+    model_name = "dict_atten_left_right"
+    corpus_r, token_size = load_corpus("../output/chord_dictionary/right-hand.json")
     midi_path = next(findall_endswith('.mid', root_path))
-    piano_data = midiToPianoroll(path, merge=True, velocity=True)
-    dic_data = pianoroll2dicMode(piano_data, corpus)
-    #pianorollToMidi(dic_data, "../output/test_attention_origin.mid", velocity=False, dictionary_dict=corpus)
-    # print("shape of data ", dic_data.shape)
-
+    piano_data_r = midiToPianoroll(midi_path, merge=True, velocity=True)
+    dic_data = pianoroll2dicMode(piano_data_r, corpus_r)
     input_datax = torch.tensor(dic_data[500:500 + args.origin_length]).unsqueeze(1).long()
-    # print(input_datax.shape)
 
-    #encoder1 = EncoderRNN(input_dim, hidden_dim).to(device)
-    #decoder1 = DecoderRNN(input_dim, hidden_dim).to(device)
     encoder1 = EncoderRNN(token_size, emb_size, hidden_dim).to(device)
     attn_decoder1 = AttnDecoderRNN(token_size, emb_size, hidden_dim, encoder1.embedding, dropout_p=0.1, max_length=args.origin_length).to(device)
 
-    encoder1.load_state_dict(torch.load('../models/encoder_dict_' + str(args.load_epoch) + '_Adam1e-3'))
-    attn_decoder1.load_state_dict(torch.load('../models/decoder_dict_' + str(args.load_epoch) + '_Adam1e-3'))
+    encoder1.load_state_dict(torch.load(f'../models/{model_name}_' + str(args.load_epoch)))
+    attn_decoder1.load_state_dict(torch.load(f'../models/{model_name}_' + str(args.load_epoch)))
 
     output, output_gen = generate(input_datax, encoder1, attn_decoder1, args.target_length)
     output = [i.item() for i in output]
     output_gen = [i.item() for i in output_gen]
 
-    pianorollToMidi(output, "../output/test_attention_" + str(args.load_epoch) + ".mid", velocity=False, dictionary_dict=corpus)
-    pianorollToMidi(output_gen, "../output/test_attention_gen_.mid" + str(args.load_epoch) + ".mid", velocity=False, dictionary_dict=corpus)
+    pianorollToMidi(output, f"../output/{model_name}_" + str(args.load_epoch) + ".mid", velocity=False, dictionary_dict=corpus_r)
+    pianorollToMidi(output_gen, f"../output/{model_name}_gen_.mid" + str(args.load_epoch) + ".mid", velocity=False, dictionary_dict=corpus_r)
 

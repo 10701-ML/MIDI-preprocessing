@@ -117,7 +117,7 @@ def predict(root, origin_length, encoder1, decoder1, target_length, model_name, 
                 break
 
             input_datax = torch.tensor(right_track[i:i + origin_length], dtype=torch.float).unsqueeze(1)
-            output, generate_seq = generate(input_datax, encoder1, decoder1, target_length, random=True, random_interval=12)
+            output, generate_seq = generate(input_datax, encoder1, decoder1, target_length)
             generate_seq = torch.squeeze(generate_seq).numpy()
             pred_left = get_left(model, generate_seq)
             chord = combine_left_and_right(pred_left, generate_seq)

@@ -25,8 +25,7 @@ def midiToPianoroll(filepath,
     """
     midi_md5 = os.path.splitext(os.path.basename(filepath))[0]
     multitrack = Multitrack(filepath, beat_resolution=CONFIG['beat_resolution'], name=midi_md5)
-    assert multitrack.tracks[0].name == 'Piano right'
-    assert multitrack.tracks[1].name == 'Piano left'
+
     if merge:
         result = multitrack.get_merged_pianoroll(mode="max")
     else:
@@ -68,7 +67,7 @@ def createSeqNetInputs(pianoroll_data: list, x_seq_length: int, lagging: int,
         y.append(y_tmp)
 
     print(len(x))
-    print("x shape", x[0].shape)
+    print("x shape (Bar-size, N_Bars, (Dim))", x[0].shape)
     print("y shape", y[0].shape)
     return x, y
 
@@ -158,7 +157,7 @@ def pianoroll2dicMode(pianoroll: np.array, dictionary_dict) -> list:
         i += 1
 
     x_dict[i] = None
-    id_ = [dictionary_dict[str(v)] for v in x_dict.values()]
+    id_ = [int(dictionary_dict[str(v)]) for v in x_dict.values()]
     return id_
 
 

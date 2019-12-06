@@ -3,7 +3,6 @@ from seq2seq_model import EncoderRNN, AttnDecoderRNN
 from midi_io_dic_mode import *
 from train_left_right import combine_left_and_right
 from parameters import *
-from generate import generate
 import torch
 import numpy as np
 from torch import optim
@@ -66,8 +65,8 @@ def trainIters(train_x, train_y, encoder, decoder, learning_rate=1e-3, batch_siz
 
     return print_loss_total / c
 
-def train_left(x, y, r_s, l_s):
-    mat = np.zeros((r_s, l_s))
+def train_left(x, y, dictionary_size):
+    mat = np.zeros((dictionary_size, dictionary_size))
     for i in range(len(x)):
         mat[x[i], y[i]] += 1
 
@@ -80,7 +79,7 @@ def get_left(mat, x):
         y.append(a)
     return y
 
-def predict(root, origin_length, encoder1, decoder1, target_length, model_name, model, corpus_r, corpus_l):
+def predict(root, origin_length, encoder1, decoder1, target_length, model_name, model):
     import time
     dir_name = os.path.join("../output/", model_name + "_" + str(time.time()))
     make_sure_path_exists(dir_name)
@@ -90,12 +89,11 @@ def predict(root, origin_length, encoder1, decoder1, target_length, model_name, 
         if pianoroll_data.shape[2] < 2:
             return
         right_track, left_track = pianoroll_data[:, :, 0], pianoroll_data[:, :, 1]
-        right_track = pianoroll2dicMode(right_track, corpus_r)
-        for i in [500, ]:
+        for i in [500,]:
             if (i + origin_length) > len(right_track):
                 break
 
-            input_datax = torch.tensor(right_track[i:i + origin_length]).unsqueeze(1).long()
+            input_datax = torch.tensor(right_track[i:i + origin_length], dtype=torch.float).unsqueeze(1)
             output, generate_seq = generate(input_datax, encoder1, decoder1, target_length, random=True, random_interval=12)
             generate_seq = torch.squeeze(generate_seq).numpy()
             pred_left = get_left(model, generate_seq)
@@ -123,11 +121,20 @@ def train_mul(args):
         left_tracks.append(left_track)
         right_tracks.append(right_track)
 
-    right_dictionary, right_token_size = load_corpus("../output/chord_dictionary/right-hand.json")
-    left_dictionary, left_token_size = load_corpus("../output/chord_dictionary/left-hand.json")
+    right_dictionary, token_size = load_corpus("../output/chord_dictionary/right-hand.json")
+    if args.epoch_number <= 0:
+        print("invalid epoch number")
+        exit()
+
+    with open("../output/chord_dictionary/chord2vec.npy", "rb") as f:
+        weights_matrix = np.load(f)
     epoch = args.epoch_number
-    encoder1 = EncoderRNN(right_token_size, emb_size, hidden_dim).to(device)
-    attn_decoder1 = AttnDecoderRNN(right_token_size, emb_size, hidden_dim, encoder1.embedding, dropout_p=0.1,
+    encoder1 = EncoderRNN(token_size, emb_size, hidden_dim).to(device)
+    encoder1.embedding..load_state_dict({'weight': weights_matrix})
+    if non_trainable:
+        encoder1.embedding.weight.requires_grad = False
+
+    attn_decoder1 = AttnDecoderRNN(token_size, emb_size, hidden_dim, encoder1.embedding, dropout_p=0.1,
                                    max_length=time_len).to(device)
 
     if args.load_epoch != 0:
@@ -145,8 +152,8 @@ def train_mul(args):
 
     x = np.concatenate(right_tracks)
     y = np.concatenate(left_tracks)
-    model = train_left(x, y, right_token_size, left_token_size)
-    predict("../data/test", origin_length, encoder1, attn_decoder1, target_length, model_name, model, right_dictionary, left_dictionary)
+    model = train_left(x, y)
+    predict("../data/test", origin_length, encoder1, attn_decoder1, target_length, model_name, model)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='train a MIDI_NET')
