@@ -76,10 +76,24 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer,
 def trainIters(train_x, train_y, encoder, decoder, max_length, print_every=1, learning_rate=1e-3, batch_size=32):
     print_loss_total = 0  # Reset every print_every
 
+    device = torch.device("cuda" if cuda else "cpu")
+
     encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate, momentum=0.9)
     decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate, momentum=0.9)
     criterion = nn.CrossEntropyLoss()
+    encoder.train()
+    encoder.to(device)
+    decoder.train()
+    decoder.to(device)
     for iter in range(1, len(train_x)+1): # iterate each sone
+        start_time = time.time()
+
+        encoder_optimizer.zero_grad()   # .backward() accumulates gradients
+        decoder_optimizer.zero_grad()   # .backward() accumulates gradients
+
+        input_tensor = input_tensor.to(device)
+        target_tensor = target_tensor.to(device) # all data & model on same device
+
         input_tensor = train_x[iter-1]
         target_tensor = train_y[iter-1]
         input_tensor = torch.tensor(input_tensor, dtype=torch.long)
@@ -91,6 +105,10 @@ def trainIters(train_x, train_y, encoder, decoder, max_length, print_every=1, le
                           encoder, decoder, encoder_optimizer, decoder_optimizer, criterion, max_length)
 
         print_loss_total += loss
+        encoder_optimizer.step()
+        decoder_optimizer.step()
+        end_time = time.time()
+        print("Epoch Time: ", end_time - start_time, 's')
 
     return print_loss_total
 
