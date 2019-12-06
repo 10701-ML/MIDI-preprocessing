@@ -12,8 +12,8 @@ CONFIG = {
     "tempo": 120.0, # default output tempo
     "velocity": 65 # default output velocity
 }
-threshold = 0.5
-STAMPS_PER_BAR = CONFIG['beat_resolution'] * 3 # assuming 4/4.
+threshold = 0
+STAMPS_PER_BAR = CONFIG['beat_resolution'] * 3
 input_num_bar = 2
 output_num_bar = 2
 time_len = STAMPS_PER_BAR * input_num_bar

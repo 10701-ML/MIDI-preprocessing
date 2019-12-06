@@ -16,6 +16,7 @@ import argparse
 
 device = torch.device("cpu")
 
+
 def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer,
           decoder_optimizer, criterion):
     encoder_optimizer.zero_grad()
@@ -67,7 +68,7 @@ def trainIters(train_x, train_y, encoder, decoder, learning_rate=1e-3, batch_siz
     return print_loss_total
 
 
-def train_left(x, y, path=None):
+def train_left(x=None, y=None, path=None):
     from keras.models import Sequential
     from keras.layers import Dense
     from keras.optimizers import Adam
@@ -88,37 +89,44 @@ def train_left(x, y, path=None):
 
     return model
 
+
 def get_left(model, x):
     pred = model.predict(x)
     pred = np.where(pred>0.5, 1, 0)
     return pred
+
 
 def combine_left_and_right(left, right):
     assert len(left) == len(right)
     final_chord = (left + right)
     return final_chord
 
-def predict(midi_path, origin_length, encoder1, decoder1, target_length, model_name):
-    import time
-    dir_name = os.path.join("../output/", model_name+"_"+str(time.time()))
-    make_sure_path_exists(dir_name)
-    pianoroll_data = midiToPianoroll(midi_path, merge=False, velocity=False)
-    right_track, left_track = pianoroll_data[:, :, 0], pianoroll_data[:, :, 1]
-    model = train_left(right_track, left_track, path="../models/keras_mul_beat8.h5")
-    for i in [500, 1000, 2000, 3000, 4000, 5000, 6000]:
-        if (i + origin_length) > len(right_track):
-            break
-        input_datax = torch.tensor(right_track[i:i + origin_length], dtype=torch.float).unsqueeze(1)
-        output, generate_seq = generate(input_datax, encoder1, decoder1, target_length)
-        generate_seq = torch.squeeze(generate_seq).numpy()
-        pred_left = get_left(model, generate_seq)
-        chord = combine_left_and_right(pred_left, generate_seq)
-        pianorollToMidi(chord, name=f"gen_{model_name}-{i}", velocity=False, dir=dir_name)
 
-        generate_seq = torch.squeeze(output).numpy()
-        pred_left = get_left(model, generate_seq)
-        chord = combine_left_and_right(pred_left, generate_seq)
-        pianorollToMidi(chord, name=f"{model_name}-{i}", velocity=False, dir=dir_name)
+def predict(root, origin_length, encoder1, decoder1, target_length, model_name, model):
+    import time
+    dir_name = os.path.join("../output/", model_name + "_" + str(time.time()))
+    make_sure_path_exists(dir_name)
+    for midi_path in findall_endswith(".mid", root):
+        mid_name = midi_path.split("/")[-1]
+        pianoroll_data = midiToPianoroll(midi_path, merge=False, velocity=False)
+        if pianoroll_data.shape[2] < 2:
+            return
+        right_track, left_track = pianoroll_data[:, :, 0], pianoroll_data[:, :, 1]
+        for i in [500,]:
+            if (i + origin_length) > len(right_track):
+                break
+
+            input_datax = torch.tensor(right_track[i:i + origin_length], dtype=torch.float).unsqueeze(1)
+            output, generate_seq = generate(input_datax, encoder1, decoder1, target_length, random=True, random_interval=12)
+            generate_seq = torch.squeeze(generate_seq).numpy()
+            pred_left = get_left(model, generate_seq)
+            chord = combine_left_and_right(pred_left, generate_seq)
+            pianorollToMidi(chord, name=f"{mid_name}_gen_by_{model_name}-{i}", velocity=False, dir=dir_name)
+            generate_seq = torch.squeeze(output).numpy()
+            pred_left = get_left(model, generate_seq)
+            chord = combine_left_and_right(pred_left, generate_seq)
+            pianorollToMidi(chord, name=f"{mid_name}_{model_name}-{i}", velocity=False, dir=dir_name)
+
 
 def train_mul(args):
     model_name = "left_right_mul-beat8"
@@ -128,7 +136,7 @@ def train_mul(args):
     origin_length = origin_num_bars * STAMPS_PER_BAR
     right_tracks = []
     left_tracks = []
-    for midi_path in findall_endswith(".mid", "../data/train"):
+    for midi_path in findall_endswith(".mid", "../data/naive"):
         pianoroll_data = midiToPianoroll(midi_path, merge=False, velocity=False)  # (n_time_stamp, 128, num_track)
         try:
             right_track, left_track = pianoroll_data[:, :, 0], pianoroll_data[:, :, 1]
@@ -146,18 +154,22 @@ def train_mul(args):
         decoder1.load_state_dict(torch.load(f'../models/mul_decoder_{model_name}_' + str(args.load_epoch)))
 
     for i in range(1, args.epoch_number + 1):
+
         loss = trainIters(input_datax, input_datay, encoder1, decoder1)
         print(f'{i} loss {loss}')
         if i % 50 == 0:
             torch.save(encoder1.state_dict(), f'../models/mul_encoder_{model_name}_' + str(i + args.load_epoch))
             torch.save(decoder1.state_dict(), f'../models/mul_decoder_{model_name}_' + str(i + args.load_epoch))
-    midi_path = "/Users/adam/Desktop/COURSES/11-701/MIDI-preprocessing/chp_op18.mid"
-    predict(midi_path, origin_length, encoder1, decoder1, target_length, model_name)
+    x = np.concatenate(right_tracks)
+    y = np.concatenate(left_tracks)
+    model = train_left(x, y, path="../models/keras_mul_beat8.h5")
+    predict("../data/test", origin_length, encoder1, decoder1, target_length, model_name, model)
+
 
 def train_one(args):
     midi_path = "../data/chp_op18.mid"
     model_name = "left_right"
-    origin_num_bars = 4
+    origin_num_bars = 8
     target_num_bars = 20
     learning_rate = args.learning_rate
     target_length = STAMPS_PER_BAR * target_num_bars
@@ -170,27 +182,21 @@ def train_one(args):
     encoder1 = EncoderRNN(input_dim, hidden_dim).to(device)
     decoder1 = DecoderRNN(input_dim, hidden_dim).to(device)
     if args.load_epoch != 0:
-        encoder1.load_state_dict(torch.load(f'../models/encoder_{model_name}_' + str(args.load_epoch) + f"_Adam_{learning_rate}"))
-        decoder1.load_state_dict(torch.load(f'../models/decoder_{model_name}_' + str(args.load_epoch) + f'_Adam_{learning_rate}'))
+        encoder1.load_state_dict(torch.load(f'../models/mul_encoder_{model_name}_' + str(args.load_epoch)))
+        decoder1.load_state_dict(torch.load(f'../models/mul_decoder_{model_name}_' + str(args.load_epoch)))
 
     print("shape of data ", pianoroll_data.shape)
     for i in range(1, args.epoch_number+1):
         loss = trainIters(input_datax, input_datay, encoder1, decoder1, learning_rate=learning_rate)
         print(f'{i} loss {loss}')
         if i % 50 == 0:
-            torch.save(encoder1.state_dict(), f'../models/encoder_{model_name}_' + str(i + args.load_epoch) + f'_Adam_{learning_rate}')
-            torch.save(decoder1.state_dict(), f'../models/decoder_{model_name}_' + str(i + args.load_epoch) + f'_Adam_{learning_rate}')
+            torch.save(encoder1.state_dict(), f'../models/mul_encoder_{model_name}_' + str(i + args.load_epoch))
+            torch.save(decoder1.state_dict(), f'../models/mul_decoder_{model_name}_' + str(i + args.load_epoch))
 
     # generating
-    input_datax = torch.tensor(right_track[200:200 + origin_length], dtype=torch.float).unsqueeze(1)
-    output, generate_seq = generate(input_datax, encoder1, decoder1, target_length)
-    generate_seq = torch.squeeze(generate_seq).numpy()
-    y = left_track
-    x = right_track
-    model = train_left(x, y, path="../models/keras_mlp.h5")
-    pred_left = get_left(model, generate_seq)
-    chord = combine_left_and_right(pred_left, generate_seq)
-    pianorollToMidi(chord, name="right-left-test", velocity=False)
+    for midi_path in findall_endswith(".mid", "../data/test"):
+        predict(midi_path, origin_length, encoder1, decoder1, target_length, model_name)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='train a MIDI_NET')
