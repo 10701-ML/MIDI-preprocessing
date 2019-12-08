@@ -13,8 +13,9 @@ import torch
 from torch import optim
 from torch import nn
 import argparse
+cuda = torch.cuda.is_available()
 
-device = torch.device("cpu")
+device = torch.device("cuda" if cuda else "cpu")
 
 def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer,
           decoder_optimizer, criterion):
@@ -108,14 +109,14 @@ def predict(midi_path, origin_length, encoder1, decoder1, target_length, model_n
     for i in [500, 1000, 2000, 3000, 4000, 5000, 6000]:
         if (i + origin_length) > len(right_track):
             break
-        input_datax = torch.tensor(right_track[i:i + origin_length], dtype=torch.float).unsqueeze(1)
+        input_datax = torch.tensor(right_track[i:i + time_len], dtype=torch.float).unsqueeze(1).to(device)
         output, generate_seq = generate(input_datax, encoder1, decoder1, target_length)
-        generate_seq = torch.squeeze(generate_seq).numpy()
+        generate_seq = torch.squeeze(generate_seq).cpu().numpy()
         pred_left = get_left(model, generate_seq)
         chord = combine_left_and_right(pred_left, generate_seq)
         pianorollToMidi(chord, name=f"gen_{model_name}-{i}", velocity=False, dir=dir_name)
 
-        generate_seq = torch.squeeze(output).numpy()
+        generate_seq = torch.squeeze(output).cpu().numpy()
         pred_left = get_left(model, generate_seq)
         chord = combine_left_and_right(pred_left, generate_seq)
         pianorollToMidi(chord, name=f"{model_name}-{i}", velocity=False, dir=dir_name)

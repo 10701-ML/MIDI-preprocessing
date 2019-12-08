@@ -1,5 +1,5 @@
 
-hidden_dim = 512
+hidden_dim = 128
 input_dim = 128
 output_dim = 128
 path = "../data/chp_op18.mid"
@@ -12,7 +12,7 @@ CONFIG = {
     "tempo": 120.0, # default output tempo
     "velocity": 65 # default output velocity
 }
-threshold = 0.5
+threshold = 0
 STAMPS_PER_BAR = CONFIG['beat_resolution'] * 3 # assuming 4/4.
 input_num_bar = 2
 output_num_bar = 2
@@ -21,6 +21,5 @@ output_len = STAMPS_PER_BAR * input_num_bar
 
 END_TOKEN = 0
 SILENCE_TOEKN = 1
-emb_size = 256 # embedding size
 root_path = "../data/"
 

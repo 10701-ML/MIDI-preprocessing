@@ -5,13 +5,25 @@ import torch.nn.functional as F
 
 
 class EncoderRNN(nn.Module):
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, time_len, input_size, hidden_size):
         super(EncoderRNN, self).__init__()
         self.hidden_size = hidden_size
-        self.gru = nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=2)
+        self.time_len = time_len
+        self.conv_time = nn.Conv1d(input_size, input_size, 5, 1, 2, bias=False)
+        self.bn_time = nn.BatchNorm1d(input_size)
+        self.relu_time = nn.ReLU()
+        self.conv_chord = nn.Conv1d(time_len, time_len, 7, 1, 3, bias=False)
+        self.bn_chord = nn.BatchNorm1d(time_len)
+        self.relu_chord = nn.ReLU()
+        self.gru = nn.LSTM(input_size=input_size, hidden_size=hidden_size)
 
-    def forward(self, input):
-        output, hidden = self.gru(input)
+    def forward(self, input):  #[time, batch, feature]
+        input = input.transpose(0, 1)  #[batch, time, feature]
+        x = self.relu_chord(self.bn_chord(self.conv_chord(input)))
+        x = x.transpose(1, 2)    #[batch, feature, time]
+        x = self.relu_time(self.bn_time(self.conv_time(x)))
+        x = x.permute(2, 0, 1)
+        output, hidden = self.gru(x)
         return output, hidden
 
 
@@ -54,11 +66,13 @@ class AttnDecoderRNN(nn.Module):
         attn_weights = F.softmax(
             self.attn(torch.cat((embedded[0], hidden[0]), 1)), dim=1)
         '''
+        #print(input[0].shape)
+        #print(hidden[0].shape)
         attn_weights = F.softmax(
             self.attn(torch.cat((input[0], hidden[0]), 1)), dim=1)
 
-        # print("weight: ", attn_weights.unsqueeze(1).shape)
-        # print("encoder: ", encoder_outputs.transpose(0, 1).shape)
+        #rint("weight: ", attn_weights.unsqueeze(1).shape)
+        #print("encoder: ", encoder_outputs.transpose(0, 1).shape)
         attn_applied = torch.bmm(attn_weights.unsqueeze(1),
                                  encoder_outputs.transpose(0, 1)).transpose(0, 1)
 
@@ -70,7 +84,7 @@ class AttnDecoderRNN(nn.Module):
 
         output = F.relu(output)
         output, hidden = self.gru(output, hidden)
-        output = self.out(output)
+        output = F.softmax(self.out(output), dim=2)
         return output, hidden, attn_weights
 
 class Sequence(nn.Module):
