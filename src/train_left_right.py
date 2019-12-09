@@ -63,7 +63,7 @@ def trainIters(train_x, train_y, encoder, decoder, learning_rate=1e-3, batch_siz
             loss += train(input_tensor[:, i: i+batch_size], target_tensor[:, i: i+batch_size],
                           encoder, decoder, encoder_optimizer, decoder_optimizer, criterion)
 
-        print_loss_total += loss
+        print_loss_total += loss.item()
 
     return print_loss_total
 
@@ -145,15 +145,18 @@ def train_mul(args):
     if args.load_epoch != 0:
         encoder1.load_state_dict(torch.load(f'../models/mul_encoder_{model_name}_' + str(args.load_epoch)))
         decoder1.load_state_dict(torch.load(f'../models/mul_decoder_{model_name}_' + str(args.load_epoch)))
-
+    losses = []
     for i in range(1, args.epoch_number + 1):
         loss = trainIters(input_datax, input_datay, encoder1, decoder1)
+        losses.append(loss)
         print(f'{i} loss {loss}')
         if i % 50 == 0:
-            torch.save(encoder1.state_dict(), f'../models/mul_encoder_{model_name}_' + str(i + args.load_epoch))
-            torch.save(decoder1.state_dict(), f'../models/mul_decoder_{model_name}_' + str(i + args.load_epoch))
+            torch.save(encoder1.state_dict(), f'../models/mul_encoder_{model_name}_loss_' + str(i + args.load_epoch))
+            torch.save(decoder1.state_dict(), f'../models/mul_decoder_{model_name}_loss_' + str(i + args.load_epoch))
+    np.save("loss_iter", np.array(losses))
     midi_path = "/Users/adam/Desktop/COURSES/11-701/MIDI-preprocessing/chp_op18.mid"
     predict(midi_path, origin_length, encoder1, decoder1, target_length, model_name)
+    return np.array(losses)
 
 def train_one(args):
     midi_path = "../data/chp_op18.mid"
@@ -199,7 +202,8 @@ if __name__ == "__main__":
     parser.add_argument('-l', '--load_epoch', type=int, help='the model epoch need to be loaded', default=0)
     parser.add_argument('-lr', '--learning_rate', type=float, help='learning rate', default=0.001)
     args = parser.parse_args()
-    train_mul(args)
+    losses = train_mul(args)
+    print
 
 
 

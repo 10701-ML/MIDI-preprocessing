@@ -91,14 +91,16 @@ def train_mul(args):
     if args.load_epoch != 0:
         encoder1.load_state_dict(torch.load(f'../models/mul_encoder_{model_name}_' + str(args.load_epoch)))
         decoder1.load_state_dict(torch.load(f'../models/mul_decoder_{model_name}_' + str(args.load_epoch)))
-
+    losses = []
     for i in range(1, args.epoch_number + 1):
         loss = trainIters(input_datax, input_datay, encoder1, decoder1)
         print(f'{i} loss {loss}')
+        losses.append(loss)
         if i % 10 == 0:
             torch.save(encoder1.state_dict(), f'../models/mul_encoder_{model_name}_' + str(i + args.load_epoch))
             torch.save(decoder1.state_dict(), f'../models/mul_decoder_{model_name}_' + str(i + args.load_epoch))
     midi_path = "../test/chpn_op66.mid"
+    np.save("loss_seq_2", np.array(losses))
     predict(midi_path, origin_length, encoder1, decoder1, target_length, model_name)
 
 if __name__ == "__main__":
