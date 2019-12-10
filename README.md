@@ -1,5 +1,5 @@
 # MIDI-Based Music Generation
-*This repo contains the model we used to generate MIDI music, each branch is a model we used, the list below briefly illustrate each model. You could switch to any branch use __git checkout__ insturction. More detailed information could be found in our report.*
+*This repo contains the model we used to generate MIDI music, each branch is a model we used, the list below briefly illustrate each model. You could switch to any branch use __git checkout__ insturction. More detailed information could be found in our report. You could also visit https://github.com/10701-ML/MIDI-preprocessing.git to find our code.*
 
 * __dictionary__: A simple embedding-based LSTM implementation.
 
