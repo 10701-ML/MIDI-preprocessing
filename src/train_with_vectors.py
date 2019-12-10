@@ -124,13 +124,14 @@ def train_mul(args):
     right_dictionary, token_size = load_corpus("../output/chord_dictionary/right-hand.json")
     with open("../output/chord_dictionary/chord2vec.npy", "rb") as f:
         weights_matrix = np.load(f)
+        weights_matrix = torch.from_numpy(weights_matrix)
     epoch = args.epoch_number
-    encoder1 = EncoderRNN(token_size, emb_size, hidden_dim).to(device)
-    encoder1.embedding.load_state_dict({'weight': weights_matrix})
-    if non_trainable:
-        encoder1.embedding.weight.requires_grad = False
+    encoder1 = EncoderRNN(token_size, 300, hidden_dim).to(device)
+    # encoder1.embedding.load_state_dict({'weight': weights_matrix})
+    # if non_trainable:
+    #     encoder1.embedding.weight.requires_grad = False
 
-    attn_decoder1 = AttnDecoderRNN(token_size, emb_size, hidden_dim, encoder1.embedding, dropout_p=0.1,
+    attn_decoder1 = AttnDecoderRNN(token_size, 300, hidden_dim, encoder1.embedding, dropout_p=0.1,
                                    max_length=time_len).to(device)
 
     if args.load_epoch != 0:

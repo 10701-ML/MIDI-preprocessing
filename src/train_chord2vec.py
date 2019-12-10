@@ -27,7 +27,7 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer,
         decoder_output, decoder_hidden, decoder_attention = decoder(
                 decoder_input, decoder_hidden, encoder_outputs)
         loss_ = criterion(decoder_output[0], target_tensor[di])
-        if loss_ >= 0.1:
+        if loss_ >= 0.3:
             loss += loss_
 
         prediction = torch.argmax(decoder_output[0], dim=1)
@@ -44,7 +44,7 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer,
     return loss.item() / target_length
 
 
-def trainIters(train_x, train_y, encoder, decoder, learning_rate=1e-3, batch_size=8):
+def trainIters(train_x, train_y, encoder, decoder, learning_rate=1e-3, batch_size=32):
     print_loss_total = 0  # Reset every print_every
 
     encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate, momentum=0.9)
@@ -112,7 +112,7 @@ def predict(root, origin_length, encoder1, decoder1, target_length, model_name, 
 
 
 def train_mul(args):
-    model_name = "dict_atten_left_right"
+    model_name = "dict_atten_left_right_chord2vec"
     root = "../data/naive"
     origin_num_bars = 10
     target_num_bars = 20
@@ -126,13 +126,19 @@ def train_mul(args):
         right_track, left_track = piano_roll_data[:, :, 0], piano_roll_data[:, :, 1]
         left_tracks.append(left_track)
         right_tracks.append(right_track)
-
+    with open("../output/chord_dictionary/chord2vec.npy", "rb") as f:
+        weights_matrix = np.load(f)
+        weights_matrix = torch.from_numpy(weights_matrix)
+    epoch = args.epoch_number
     right_dictionary, right_token_size = load_corpus("../output/chord_dictionary/right-hand.json")
     left_dictionary, left_token_size = load_corpus("../output/chord_dictionary/left-hand.json")
     epoch = args.epoch_number
     encoder1 = EncoderRNN(right_token_size, emb_size, hidden_dim).to(device)
     attn_decoder1 = AttnDecoderRNN(right_token_size, emb_size, hidden_dim, encoder1.embedding, dropout_p=0.1,
                                    max_length=time_len).to(device)
+    encoder1.embedding.load_state_dict({'weight': weights_matrix})
+    if non_trainable:
+        encoder1.embedding.weight.requires_grad = False
 
     if args.load_epoch != 0:
         encoder1.load_state_dict(torch.load(f'../models/E_{model_name}_' + str(args.load_epoch)))
@@ -146,6 +152,7 @@ def train_mul(args):
         if i % 50 == 0:
             torch.save(encoder1.state_dict(), f'../models/E_{model_name}_' + str(i + args.load_epoch))
             torch.save(attn_decoder1.state_dict(), f'../models/D_{model_name}_' + str(i + args.load_epoch))
+
     input_datax = [i.flatten() for i in input_datax]
     input_datay = [i.flatten() for i in input_datay]
 

@@ -40,7 +40,23 @@ def evaluate(midi_path):
     qn = valid_key_num / total_key_num
     return upc, qn
 
+def batch_evaluate(path):
+    upcs = []
+    qns = []
+    for midi_path in findall_endswith(".mid", path):
+        upc, qn = evaluate(midi_path)
+        upcs.append(upc)
+        qns.append(qn)
+
+    print(f"-- {path} -- ")
+    print(f"UPCS: {sum(upcs) / len(upcs)}")
+    print(f"QNS: {sum(qns) / len(qns)}")
 
 if __name__ == "__main__":
     midi_path = "../data/chp_op18.mid"
-    evaluate(midi_path)
+    dict_atten_right_left = "../output/samples_dict_atten_right_left"
+    cnn_atten_many_hot = "../output/cnn-atten-many-hot"
+    true_music = "../data/naive"
+    batch_evaluate(true_music)
+    batch_evaluate(cnn_atten_many_hot)
+    batch_evaluate(dict_atten_right_left)
