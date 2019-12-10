@@ -7,6 +7,7 @@ from torch import nn
 import time
 import math
 import argparse
+import numpy as np
 
 device = torch.device("cpu")
 
@@ -101,10 +102,13 @@ if __name__ == "__main__":
 
     input_datax, input_datay = createSeqNetInputs([piano_data], time_len, output_len)
 
+    losses = []
     for i in range(1, epoch+1):
         loss = trainIters(input_datax, input_datay, encoder1, decoder1, max_length=4000)
         print(f'{i} loss {loss}')
+        losses.append(loss)
         if i % 50 == 0:
             torch.save(encoder1.state_dict(), '../models/encoder_baseline_' + str(i + args.load_epoch) + '_Adam1e-3')
             torch.save(decoder1.state_dict(), '../models/decoder_baseline_' + str(i + args.load_epoch) + '_Adam1e-3')
+    np.save('loss_seq', np.array(losses))
 
