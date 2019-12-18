@@ -1,6 +1,6 @@
 from parameters import *
 import torch
-from midi_io_dic_mode import *
+from midi_io import *
 import argparse
 import numpy as np
 
@@ -94,8 +94,8 @@ if __name__ == "__main__":
     model_name = "dict_atten_left_right"
     corpus_r, token_size = load_corpus("../output/chord_dictionary/right-hand.json")
     midi_path = next(findall_endswith('.mid', root_path))
-    piano_data_r = midiToPianoroll(midi_path, merge=True, velocity=True)
-    dic_data = pianoroll2dicMode(piano_data_r, corpus_r)
+    piano_data_r = midi2Pianoroll(midi_path, merge=True, velocity=True)
+    dic_data = pianoroll2Embedding(piano_data_r, corpus_r)
     input_datax = torch.tensor(dic_data[500:500 + args.origin_length]).unsqueeze(1).long()
 
     encoder1 = EncoderRNN(token_size, emb_size, hidden_dim).to(device)
@@ -108,6 +108,6 @@ if __name__ == "__main__":
     output = [i.item() for i in output]
     output_gen = [i.item() for i in output_gen]
 
-    pianorollToMidi(output, f"../output/{model_name}_" + str(args.load_epoch) + ".mid", velocity=False, dictionary_dict=corpus_r)
-    pianorollToMidi(output_gen, f"../output/{model_name}_gen_.mid" + str(args.load_epoch) + ".mid", velocity=False, dictionary_dict=corpus_r)
+    pianoroll2Midi(output, f"../output/{model_name}_" + str(args.load_epoch) + ".mid", velocity=False, dictionary_dict=corpus_r)
+    pianoroll2Midi(output_gen, f"../output/{model_name}_gen_.mid" + str(args.load_epoch) + ".mid", velocity=False, dictionary_dict=corpus_r)
 

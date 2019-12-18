@@ -1,6 +1,6 @@
 # from seq2seq_model import DecoderRNN, EncoderRNN
-from seq2seq_model import EncoderRNN, AttnDecoderRNN
-from midi_io_dic_mode import *
+from models.seq2seq_model import EncoderRNN, AttnDecoderRNN
+from midi_io import *
 from train_left_right import combine_left_and_right
 from parameters import *
 import torch
@@ -85,7 +85,7 @@ def predict(root, origin_length, encoder1, decoder1, target_length, model_name, 
     make_sure_path_exists(dir_name)
     for midi_path in findall_endswith(".mid", root):
         mid_name = midi_path.split("/")[-1]
-        pianoroll_data = midiToPianoroll(midi_path, merge=False, velocity=False)
+        pianoroll_data = midi2Pianoroll(midi_path, merge=False, velocity=False)
         if pianoroll_data.shape[2] < 2:
             return
         right_track, left_track = pianoroll_data[:, :, 0], pianoroll_data[:, :, 1]
@@ -98,11 +98,11 @@ def predict(root, origin_length, encoder1, decoder1, target_length, model_name, 
             generate_seq = torch.squeeze(generate_seq).numpy()
             pred_left = get_left(model, generate_seq)
             chord = combine_left_and_right(pred_left, generate_seq)
-            pianorollToMidi(chord, name=f"{mid_name}_gen_by_{model_name}-{i}", velocity=False, dir=dir_name)
+            pianoroll2Midi(chord, name=f"{mid_name}_gen_by_{model_name}-{i}", velocity=False, dir=dir_name)
             generate_seq = torch.squeeze(output).numpy()
             pred_left = get_left(model, generate_seq)
             chord = combine_left_and_right(pred_left, generate_seq)
-            pianorollToMidi(chord, name=f"{mid_name}_{model_name}-{i}", velocity=False, dir=dir_name)
+            pianoroll2Midi(chord, name=f"{mid_name}_{model_name}-{i}", velocity=False, dir=dir_name)
 
 
 def train_mul(args):
@@ -116,7 +116,7 @@ def train_mul(args):
     left_tracks, right_tracks = [], []
     # get_dictionary_of_chord(root, two_hand=False)
     for midi_path in findall_endswith('.mid', root):
-        piano_roll_data = midiToPianoroll(midi_path, merge=False, velocity=False, )
+        piano_roll_data = midi2Pianoroll(midi_path, merge=False, velocity=False, )
         right_track, left_track = piano_roll_data[:, :, 0], piano_roll_data[:, :, 1]
         left_tracks.append(left_track)
         right_tracks.append(right_track)

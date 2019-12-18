@@ -5,8 +5,8 @@ output_dim = 128
 path = "../data/chp_op18.mid"
 batch_size = 32
 CONFIG = {
-    'beat_resolution': 24, # temporal resolution (in time step per beat)
-    'time_signatures': ['3/4'], # '3/4', '2/4'
+    'beat_resolution': 8, # temporal resolution (in time step per beat)
+    'time_signatures': '3/4', # '3/4', '2/4'
     "velocity_high": 127,
     "velocity_low": 0,
     "tempo": 120.0, # default output tempo

@@ -1,3 +1,2 @@
 pypianoroll
 pretty-midi
-mido
